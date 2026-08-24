@@ -71,7 +71,7 @@ function linkMinimumLevel(entry) {
 function blobMinimumLevel(entry) {
   return entry.name === 'blob.suppression_set'
     ? 'ccf-governed-archive-v1'
-    : 'ccf-canonical-store-v1';
+    : 'ccf-exchange-v1';
 }
 
 function predicateRequirements(entry) {

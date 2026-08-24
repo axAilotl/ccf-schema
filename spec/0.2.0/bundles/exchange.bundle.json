@@ -9,12 +9,32 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "CCF-0.2.0-DRAFT.md",
-      "digest": "sha256:6d8be334a469e29e62143cbb2f060dc4dc8862754db666a66028f46cf4f29d10"
+      "digest": "sha256:fbf0cea8608fd9ed2a81842d94d422dd555f808fcb6664adbda7da07418e71fc"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "README.md",
-      "digest": "sha256:9993d86cb41e8cca8e51e95bd31b9a2b97d8a7f1954d2908c48456ab2a436c97"
+      "digest": "sha256:48940974515a2da83187535ac0d86c9ab3c41ef5a2cdc74f77c74900da8b4c55"
+    },
+    {
+      "source_package": "ccf-0.2.0",
+      "path": "examples/capsule/manifest.json",
+      "digest": "sha256:5dbbc4df8b4e54782c2663ef217288e2e4b2138f8036545eb9a30bee52c99615"
+    },
+    {
+      "source_package": "ccf-0.2.0",
+      "path": "examples/capsule/opaque/governance-material.ndjson",
+      "digest": "sha256:b3050e3bd03052621a671e2f870347ceb107694a6a0d5dae0cac973d0c7b1802"
+    },
+    {
+      "source_package": "ccf-0.2.0",
+      "path": "examples/capsule/submissions/links.ndjson",
+      "digest": "sha256:a9bc142c6a834afdcd0920832cb1e604e8af63d740cbf24bb60f54549416b5f1"
+    },
+    {
+      "source_package": "ccf-0.2.0",
+      "path": "examples/capsule/submissions/records.ndjson",
+      "digest": "sha256:0f840e09442ab277532138e14a22792521c56f549ef1308c974799bea81ffe20"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -24,7 +44,7 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/capabilities.registry.json",
-      "digest": "sha256:63cf750e739384265d8590e586b47464df478005e67b634efc733b819820d2c5"
+      "digest": "sha256:dd2a2be53672514058d2a5ec5eec51f8d86e7f55c78702dd7116411c8f0e9939"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -49,12 +69,12 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/semantic-packs.registry.json",
-      "digest": "sha256:406b30081f071711341979c2e0d7d1742c2072c6e327abb486ece33e5ba3f77c"
+      "digest": "sha256:8fdaf11168146202e660f335f4d33b5e313f1df2ed13d87fa7123dc65e192434"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/semantic-requirements.registry.json",
-      "digest": "sha256:eb48f310614b23831c6abb7974bc7d0d1df4b1dedca656755f73ff3b9080dba6"
+      "digest": "sha256:b465814cae2f9382b277467749c4a91e8de5ec32be11364dffac8cf48473e4b4"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -64,17 +84,17 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/catalog.json",
-      "digest": "sha256:cacc6b723d3d0b92c0117118a1b018d52231574eb790a6898944ee1ed9622c4e"
+      "digest": "sha256:67b29e02dc4615d9807b9a771483d0e780c73d7196e259400b344d2537b7c7f7"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/common/defs.schema.json",
-      "digest": "sha256:b5cfaf7ea90689c26b1431dee67994da453ac1a19a0be047e7759ab134818942"
+      "digest": "sha256:5d7e0fb01d557276aa4acdd14750a32e7933ecf583bb2745ec7f7b438badd308"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/declarations/bundle-manifest.schema.json",
-      "digest": "sha256:58d9439186624cb00b5f2e4df82c314e72a70657b1d31a2d0df5fc3c5ea8d2a4"
+      "digest": "sha256:753c8614a7b588beced1950379871a4540238cce483e5384c0856aa0c1649277"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -84,22 +104,27 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/capsule-manifest.schema.json",
-      "digest": "sha256:9efeb8935dfb4ab6cb2006a85fffdb30aa4466fdff6ac4b96b7a87f8e376b158"
+      "digest": "sha256:678494aaea6f822b499965bbc1f0e471aa3587ed4832c6528ce4a755db5ff426"
+    },
+    {
+      "source_package": "ccf-0.2.0",
+      "path": "schemas/exchange/downgrade-inventory.schema.json",
+      "digest": "sha256:4381a31b20ac699f6b1761b664fd9633885d6f47fa1ae2bf06779a0c693bcbce"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/downgrade-receipt.schema.json",
-      "digest": "sha256:52b6bc6d9769952d3ff88f75bcb08d2adcdf68e21dfd4acf63030ebc320fd136"
+      "digest": "sha256:e415e3fb7e4776734ac0ae09eff46e274113c906605113bf87487d7e9d63bfde"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/uplift-receipt.schema.json",
-      "digest": "sha256:ab10e04e662f16447fbf01a5d8ff3975a354dbf31acaa68f36554d69769ce7e6"
+      "digest": "sha256:4da08ccbe90486e09841f5d61e7cb1471edcb9c1a066e6c0ddb6be1632a3f2e1"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/capability-registry.schema.json",
-      "digest": "sha256:620cb3413a3d9b1c5f6c3158a80b1529ac24651dda68581678f5c4ad58c501fd"
+      "digest": "sha256:8604a62aa06baba3c68910f5f66adf23dcb80e6e4cfb4e1b844575b3f545bb0e"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -124,7 +149,7 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/semantic-pack-registry.schema.json",
-      "digest": "sha256:ba68b58f8d53a6a905be7fd0dd6e41410eeaa15a4144784c2d6816f2a416d10b"
+      "digest": "sha256:c11746f72bb7fac52d6ff4a7ed3ca32c913a9e38af9e5409846202f2337120fe"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -134,7 +159,7 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "semantic-catalog.json",
-      "digest": "sha256:a3305979f39ae32f3ca9f4ae22a95ce8db75b81729c72cee42117e9d6a716811"
+      "digest": "sha256:843e5b235983cd73a942aa1893a8c690bcb65223c8758fb0685d5c92c75d3a31"
     },
     {
       "source_package": "ccf-0.1.2",

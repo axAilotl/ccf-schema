@@ -7,7 +7,7 @@
     "format": {"const": "ccf.bundle-manifest/0.2.0"},
     "status": {"const": "working-draft"},
     "id": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/capabilityId"},
-    "kind": {"enum": ["level", "semantic_pack"]},
+    "kind": {"enum": ["level", "capability", "semantic_pack"]},
     "provides": {"type": "string", "minLength": 1},
     "depends_on": {
       "type": "array",

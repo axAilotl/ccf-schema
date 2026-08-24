@@ -90,31 +90,6 @@
     },
     {
       "source_package": "ccf-0.1.2",
-      "path": "schemas/objects/structural/core-device-credential.schema.json",
-      "digest": "sha256:668712dfffe3ac512828f5e64f61ffe73a05ea08cfcedd05af8edf78072fc199"
-    },
-    {
-      "source_package": "ccf-0.1.2",
-      "path": "schemas/objects/structural/empty.schema.json",
-      "digest": "sha256:8cbd6f51ebbc735c64cc171a56e12a53dfee0b941142038aa1c74dfbfd8c71a1"
-    },
-    {
-      "source_package": "ccf-0.1.2",
-      "path": "schemas/objects/structural/lineage-erasure-receipt.schema.json",
-      "digest": "sha256:398ea8b33dd87a22e10d5662ade92367617a63c1d81f9d97f5e90ce79d2af031"
-    },
-    {
-      "source_package": "ccf-0.1.2",
-      "path": "schemas/objects/structural/lineage-link-disposition.schema.json",
-      "digest": "sha256:143e2a1b29e426027a39d2e29c62d4ccca77fd9b211f3a18f6027bdf89f057d4"
-    },
-    {
-      "source_package": "ccf-0.1.2",
-      "path": "schemas/objects/structural/lineage-suppression-set.schema.json",
-      "digest": "sha256:8bc8161f7638f0615b50d77d5f513b015bb5a816154c1cb0b35e36ad85ced4f8"
-    },
-    {
-      "source_package": "ccf-0.1.2",
       "path": "schemas/operational/admission.schema.json",
       "digest": "sha256:76c424d1062c8160688f1592102f71f38c4db31424905e2fdb8418e8461692ce"
     },

@@ -11,6 +11,24 @@
     "target_level": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/levelId"},
     "created_at": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/timestamp"},
     "losslessness": {"enum": ["lossless", "lossy"]},
+    "source_inventory": {
+      "type": "object",
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "digest": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/digest"}
+      },
+      "required": ["path", "digest"],
+      "additionalProperties": false
+    },
+    "export_inventory": {
+      "type": "object",
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "digest": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/digest"}
+      },
+      "required": ["path", "digest"],
+      "additionalProperties": false
+    },
     "omissions": {
       "type": "array",
       "items": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/omission"}
@@ -32,7 +50,8 @@
   },
   "required": [
     "format", "receipt_id", "export_pack_id", "source_level", "target_level",
-    "created_at", "losslessness", "omissions", "preserved_opaque", "extensions"
+    "created_at", "losslessness", "source_inventory", "export_inventory",
+    "omissions", "preserved_opaque", "extensions"
   ],
   "allOf": [
     {

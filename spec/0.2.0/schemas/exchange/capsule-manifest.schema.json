@@ -74,11 +74,28 @@
               "registries", "schemas", "integrity_proofs", "opaque"
             ]
           },
+          "handling": {"enum": ["activate", "preserve_inert", "preserve_opaque"]},
+          "activation_requirements": {
+            "type": "object",
+            "properties": {
+              "minimum_level": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/levelId"},
+              "capabilities": {
+                "type": "array",
+                "items": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/capabilityId"},
+                "uniqueItems": true
+              }
+            },
+            "required": ["minimum_level", "capabilities"],
+            "additionalProperties": false
+          },
           "digest": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/digest"},
           "byte_length": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/uint64"},
           "required": {"type": "boolean"}
         },
-        "required": ["path", "media_type", "content_role", "digest", "byte_length", "required"],
+        "required": [
+          "path", "media_type", "content_role", "handling", "activation_requirements",
+          "digest", "byte_length", "required"
+        ],
         "additionalProperties": false
       }
     },

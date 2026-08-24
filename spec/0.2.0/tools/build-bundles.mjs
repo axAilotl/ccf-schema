@@ -33,6 +33,10 @@ const draftArtifacts = [
   'CCF-0.2.0-DRAFT.md',
   'README.md',
   'semantic-catalog.json',
+  'examples/capsule/manifest.json',
+  'examples/capsule/submissions/links.ndjson',
+  'examples/capsule/submissions/records.ndjson',
+  'examples/capsule/opaque/governance-material.ndjson',
   ...walk(path.join(ROOT, 'schemas')).map((file) => path.relative(ROOT, file).replaceAll(path.sep, '/')),
   ...walk(path.join(ROOT, 'registries')).map((file) => path.relative(ROOT, file).replaceAll(path.sep, '/')),
 ].sort().map((relativePath) => artifact('ccf-0.2.0', ROOT, relativePath));
@@ -80,6 +84,7 @@ const canonicalBasePaths = [
   'schemas/common/compartment-envelope.schema.json',
   ...walk(path.join(BASE, 'schemas', 'objects'))
     .filter((file) => file.endsWith('.json') && !file.includes(`${path.sep}structural${path.sep}integrity-`))
+    .filter((file) => !file.includes(`${path.sep}structural${path.sep}`))
     .filter((file) => !file.endsWith('commit-member.schema.json'))
     .filter((file) => !file.endsWith('mindpack-manifest.schema.json'))
     .map((file) => path.relative(BASE, file).replaceAll(path.sep, '/')),
@@ -135,6 +140,25 @@ const bundleDefinitions = [
     artifacts: baseArtifacts([
       ...walk(path.join(BASE, 'schemas')).filter((file) => file.endsWith('.json')).map((file) => path.relative(BASE, file).replaceAll(path.sep, '/')),
       ...walk(path.join(BASE, 'registries')).filter((file) => file.endsWith('.json')).map((file) => path.relative(BASE, file).replaceAll(path.sep, '/')),
+    ]),
+  },
+  {
+    filename: 'signed-producer-sync.bundle.json',
+    id: 'ccf-signed-producer-sync-bundle-v1',
+    kind: 'capability',
+    provides: 'ccf-signed-producer-sync-v1',
+    depends_on: ['ccf-exchange-bundle-v1'],
+    artifacts: baseArtifacts([
+      'schemas/common/compartment-envelope.schema.json',
+      'schemas/objects/record-header.schema.json',
+      'schemas/objects/record-structural-content.schema.json',
+      'schemas/objects/record-structural.schema.json',
+      'schemas/sync/producer-batch.schema.json',
+      'schemas/sync/delta-pack-manifest.schema.json',
+      'schemas/sync/sync-head.schema.json',
+      'schemas/security/device-credential.schema.json',
+      'schemas/objects/structural/core-device-credential.schema.json',
+      'schemas/payloads/sync/producer_batch_receipt.schema.json',
     ]),
   },
   ...[

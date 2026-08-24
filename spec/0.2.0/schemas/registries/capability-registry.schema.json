@@ -13,6 +13,12 @@
           "id": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/capabilityId"},
           "status": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/status"},
           "minimum_level": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/levelId"},
+          "conformance_suite": {
+            "oneOf": [
+              {"type": "string", "pattern": "^check-capability-[a-z0-9-]+$"},
+              {"type": "null"}
+            ]
+          },
           "description": {"type": "string", "minLength": 1},
           "depends_on": {
             "type": "array",
@@ -31,7 +37,7 @@
           }
         },
         "required": [
-          "id", "status", "minimum_level", "description", "depends_on",
+          "id", "status", "minimum_level", "conformance_suite", "description", "depends_on",
           "security_claims", "exclusions"
         ],
         "additionalProperties": false

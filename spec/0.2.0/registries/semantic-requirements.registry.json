@@ -6,7 +6,7 @@
       "resource_kind": "blob_type",
       "name": "blob.manifest",
       "version": 1,
-      "minimum_level": "ccf-canonical-store-v1",
+      "minimum_level": "ccf-exchange-v1",
       "state_effects_level": null,
       "required_capabilities": [],
       "semantic_pack": null,

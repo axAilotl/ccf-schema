@@ -46,10 +46,19 @@ make check-exchange
 make check-canonical
 make check-verified
 make check-governed
+make check-capability-signed-producer-sync
+make check-semantic-pack-continuity
+make check-semantic-pack-work
+make check-semantic-pack-agent
 ```
 
 `check-governed` runs the disposable PostgreSQL 16 + pgvector fixture inherited
 from 0.1.2 and therefore requires Docker.
+
+Only signed producer sync has a draft capability suite today. The remaining
+security capabilities require deployment-specific evidence until dedicated
+vectors are published; see [docs/conformance-suites.md](docs/conformance-suites.md).
+Each semantic pack has an independent resource/schema/bundle coverage suite.
 
 Regenerate the requirement overlay, draft catalogs, and bundle manifests with:
 

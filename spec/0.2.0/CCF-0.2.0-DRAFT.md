@@ -187,6 +187,12 @@ distinct. Every listed stream has a SHA-256 digest and byte length. A signature
 or archive proof is optional and creates no claim unless its declared profile is
 supported and verification succeeds.
 
+Every stream also declares its activation requirements and handling. Material
+above the recipient's level or capabilities is marked `preserve_inert` or
+`preserve_opaque`; an `activate` stream whose requirements are unmet is invalid.
+The executable fixture byte-preserves both a known Governed Record and an
+unknown future type without loading either as active semantics.
+
 Capsule does not replace mindpack. Capsule is for scoped exchange and import;
 mindpack remains the archive-oriented container for restore, replica, complete
 foreign merge, journal history, and high-fidelity custody transfer.
@@ -198,10 +204,33 @@ canonical ID, resulting object hash, disposition, archive resolution, and exact
 producer-authentication state. A supplied ID MUST NOT change. `verified`
 producer authentication requires a retained proof that actually verified.
 
+Pending uplift entries have null object hashes and make no completed-admission
+claim. `admitted` and `existing` entries require an object hash. A
+`producer_authentication` value of `verified` requires proof that an applicable
+capability verifier actually accepted; a nonempty string alone is not proof.
+The base Exchange validator refuses such a claim. The signed-producer-sync
+suite resolves the retained batch against an explicit credential trust anchor,
+verifies the ordered, fully hash-pinned canonical credential lineage and
+revocation state at batch time,
+checks the key binding and signature, and recomputes the covered submission
+hash before accepting it. A deployment obtains that trust anchor from an
+authenticated archive state or an explicitly configured out-of-band trust
+store; an arbitrary credential supplied alongside a batch is not trusted.
+
 A downgrade receipt identifies source and target levels, declares the export
 `lossless` or `lossy`, enumerates every omission when lossy, and lists higher-level
 material retained opaquely. The receipt accompanies the export and does not alter
 portable objects.
+
+The receipt pins source and export inventories. Its omission set MUST equal the
+exact source-minus-export inventory difference; opaque material listed as
+preserved MUST have bytes matching its digest.
+
+Inventories use `schemas/exchange/downgrade-inventory.schema.json`. Physical
+artifacts are identified by relative path and raw digest. Assertions that move
+between containers are identified logically as `submission:<portable-id>` with
+their JCS submission hash, so an exporter cannot make a derived output appear
+to have been a pre-existing source file merely by reusing its path.
 
 ## 8. Conformance suites
 
@@ -210,15 +239,26 @@ Conformance is cumulative but executable at the claimed boundary:
 - `check-exchange`: declarations, registries, schema-valid submissions, stable
   references, Capsule streams, unknown preservation, dependencies, and receipts;
 - `check-canonical`: L1 plus inherited 0.1.2 JCS, compartment, object-hash, Blob,
-  and submission-hash vectors;
-- `check-verified`: L2 plus signing, Merkle, catalog, mindpack stream, parent,
-  head, and membership correspondence checks;
+  submission-hash, Capsule replay, atomic write, and exact-availability vectors;
+- `check-verified`: L2 plus trusted-genesis signer binding, Merkle, catalog,
+  mindpack stream, parent, head, tamper rejection, restore-coordinate,
+  downgrade-source authentication, foreign-merge, and destination commit checks;
 - `check-governed`: L3 plus the 0.1.2 policy, lineage, suppression, conformance,
   projection, and PostgreSQL fixtures.
+
+CCF schema validation MUST assert the inherited `ccf-uint64` format, including
+the inclusive `0` through `18446744073709551615` bound; treating this custom
+format as an unknown annotation is not CCF-conformant. Protocol rules may impose
+a narrower range, such as the nonzero producer sequence required by signed sync.
 
 Capability-specific suites remain additional to the claimed level. An
 implementation is not required to run a suite for a capability it does not
 declare.
+
+This Working Draft includes an executable signed-producer-sync capability suite.
+The capability registry uses a null suite for encryption, selective erasure,
+witnessing, succession, and external KMS until dedicated vectors are published;
+the draft package itself therefore makes no conformance claim for them.
 
 ## 9. Distribution bundles
 
@@ -232,6 +272,12 @@ Canonical Store, or Verified Archive bundles.
 These manifests define the artifact boundary for later release archives without
 copying or renumbering inherited schemas. Each artifact identifies its source
 package and raw SHA-256 digest.
+
+Distribution bundles are not standalone conformance runners. The draft source
+package is the conformance package and retains its tools, vectors, full
+fixtures, Makefiles, and private test keys separately from the runtime artifact
+sets. A level bundle therefore does not acquire Governed fixtures or test-only
+secrets merely because its conformance suite inherits them as an oracle.
 
 ## 10. Migration from 0.1.2
 

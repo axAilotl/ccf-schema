@@ -36,6 +36,7 @@
       "properties": {
         "category": {
           "enum": [
+            "submission",
             "journal_proof",
             "policy_state",
             "lineage_state",

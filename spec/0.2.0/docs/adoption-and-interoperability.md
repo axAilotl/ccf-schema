@@ -16,7 +16,7 @@ Full governance is claimed only after policy evaluation, deletion operations,
 suppression behavior, generation fences, and destructive projection rebuild have
 passed operational tests.
 
-## First cross-application cases
+## Planned cross-application cases
 
 1. Exchange Capsule round trip preserves IDs, types, source claims, references,
    and unknown extensions.
@@ -36,3 +36,9 @@ archive kernel prove integration but not independent interoperability. A full
 independent claim needs a separately written generator or verifier. That second
 implementation can target Exchange and Canonical Store before implementing an
 archive or governance engine.
+
+These cases are an application-integration roadmap, not claims made by this
+schema repository. The package directly exercises Capsule preservation,
+canonical uplift/idempotency, Verified foreign-merge invariants, and Governed
+erasure fixtures. Real Thoth/Cissa round trips and process-interruption tests
+require those application repositories and remain external release gates.

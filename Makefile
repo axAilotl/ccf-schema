@@ -5,7 +5,7 @@ DRAFT_PACKAGE := spec/$(DRAFT_VERSION)
 ARCHIVE_NAME := ccf-$(VERSION).zip
 ARCHIVE := spec/$(ARCHIVE_NAME)
 
-.PHONY: check check-draft check-draft-verified check-draft-governed rebuild rebuild-draft reproduce package
+.PHONY: check check-draft check-draft-exchange check-draft-canonical check-draft-verified check-draft-governed check-draft-signed-producer-sync rebuild rebuild-draft reproduce package
 
 check:
 	$(MAKE) -C $(PACKAGE) check
@@ -13,11 +13,20 @@ check:
 check-draft:
 	$(MAKE) -C $(DRAFT_PACKAGE) check
 
+check-draft-exchange:
+	$(MAKE) -C $(DRAFT_PACKAGE) check-exchange
+
+check-draft-canonical:
+	$(MAKE) -C $(DRAFT_PACKAGE) check-canonical
+
 check-draft-verified:
 	$(MAKE) -C $(DRAFT_PACKAGE) check-verified
 
 check-draft-governed:
 	$(MAKE) -C $(DRAFT_PACKAGE) check-governed
+
+check-draft-signed-producer-sync:
+	$(MAKE) -C $(DRAFT_PACKAGE) check-capability-signed-producer-sync
 
 rebuild:
 	$(MAKE) -C $(PACKAGE) rebuild

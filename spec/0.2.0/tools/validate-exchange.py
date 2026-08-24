@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -11,21 +12,22 @@ from referencing import Registry, Resource
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT.parent / "0.1.2"
+CCF_FORMAT_CHECKER = FormatChecker()
+
+
+@CCF_FORMAT_CHECKER.checks("ccf-uint64")
+def is_ccf_uint64(value) -> bool:
+    if not isinstance(value, str):
+        return True
+    if value != "0" and (not value.isascii() or not value.isdigit() or value.startswith("0")):
+        return False
+    return value == "0" or len(value) < 20 or (
+        len(value) == 20 and value <= "18446744073709551615"
+    )
 
 
 def load_json(path: Path):
     return json.loads(path.read_text())
-
-
-def fixture_submission_hash(submission) -> str:
-    canonical = json.dumps(
-        submission,
-        ensure_ascii=False,
-        allow_nan=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode()
-    return "sha256:" + hashlib.sha256(b"ccf:submission:v2\0" + canonical).hexdigest()
 
 
 schemas = {}
@@ -52,7 +54,7 @@ def validate(schema_id: str, instance, label: str):
     validator = Draft202012Validator(
         schemas[schema_id],
         registry=schema_registry,
-        format_checker=FormatChecker(),
+        format_checker=CCF_FORMAT_CHECKER,
     )
     errors = sorted(validator.iter_errors(instance), key=lambda error: list(error.path))
     if errors:
@@ -110,12 +112,20 @@ for entry in capabilities.values():
     missing = set(entry["depends_on"]) - capabilities.keys()
     if missing:
         raise SystemExit(f'unknown capability dependencies for {entry["id"]}: {sorted(missing)}')
+    suite = entry["conformance_suite"]
+    if suite is not None and f"{suite}:" not in (ROOT / "Makefile").read_text():
+        raise SystemExit(f'missing declared capability suite for {entry["id"]}: {suite}')
 for entry in semantic_packs.values():
     if entry["minimum_level"] not in levels:
         raise SystemExit(f'unknown semantic-pack minimum level for {entry["id"]}')
     missing = set(entry["required_capabilities"]) - capabilities.keys()
     if missing:
         raise SystemExit(f'unknown semantic-pack capabilities for {entry["id"]}: {sorted(missing)}')
+    if f'{entry["conformance_suite"]}:' not in (ROOT / "Makefile").read_text():
+        raise SystemExit(
+            f'missing declared semantic-pack suite for {entry["id"]}: '
+            f'{entry["conformance_suite"]}'
+        )
 
 base_profiles = {
     entry["name"] for entry in load_json(BASE / "registries" / "profiles.registry.json")["entries"]
@@ -187,6 +197,23 @@ requirement_by_resource = {
 }
 
 
+def registered_activation_requirement(submission):
+    resource_kind = f'{submission["submission_kind"]}_type'
+    if submission["submission_kind"] == "record":
+        resource_kind = "record_type"
+    elif submission["submission_kind"] == "link":
+        resource_kind = "link_type"
+    key = (
+        resource_kind,
+        submission.get("type", "blob.manifest"),
+        submission.get("type_version", 1),
+    )
+    requirement = requirement_by_resource.get(key)
+    if requirement is None:
+        raise ValueError(f'unregistered active semantics: {key}')
+    return requirement
+
+
 def assert_declared_features_fit_level(declaration, label: str):
     declared_level_rank = level_rank[declaration["level"]]
     for feature_id in declaration["capabilities"]:
@@ -210,8 +237,6 @@ for path in sorted(bundle_root.glob("*.json")):
         raise SystemExit(f'duplicate bundle ID {bundle["id"]}')
     bundles[bundle["id"]] = bundle
 
-if len(bundles) != 7:
-    raise SystemExit("expected four level bundles and three semantic-pack bundles")
 source_roots = {"ccf-0.1.2": BASE, "ccf-0.2.0": ROOT}
 for bundle in bundles.values():
     missing_dependencies = set(bundle["depends_on"]) - bundles.keys()
@@ -244,9 +269,40 @@ for bundle in bundles.values():
             ]
             if leaking:
                 raise SystemExit(f'{bundle["id"]} leaks semantic-pack schemas: {leaking}')
+    elif bundle["kind"] == "capability":
+        if bundle["provides"] not in capabilities:
+            raise SystemExit(f'{bundle["id"]} provides an unknown capability')
     elif bundle["provides"] not in semantic_packs:
         raise SystemExit(f'{bundle["id"]} provides an unknown semantic pack')
-print("OK   four level bundles and three isolated semantic-pack bundles")
+if len(bundles) != 8:
+    raise SystemExit("expected four level, one capability, and three semantic-pack bundles")
+if any(
+    artifact["path"] == "requirements-checks.txt"
+    for bundle in bundles.values()
+    for artifact in bundle["artifacts"]
+):
+    raise SystemExit("runtime bundles include conformance-only Python dependencies")
+signed_sync_bundle = next(
+    bundle
+    for bundle in bundles.values()
+    if bundle["provides"] == "ccf-signed-producer-sync-v1"
+)
+signed_sync_base_paths = {
+    artifact["path"]
+    for artifact in signed_sync_bundle["artifacts"]
+    if artifact["source_package"] == "ccf-0.1.2"
+}
+required_credential_envelope_paths = {
+    "schemas/common/compartment-envelope.schema.json",
+    "schemas/objects/record-header.schema.json",
+    "schemas/objects/record-structural-content.schema.json",
+    "schemas/objects/record-structural.schema.json",
+    "schemas/objects/structural/core-device-credential.schema.json",
+    "schemas/security/device-credential.schema.json",
+}
+if not required_credential_envelope_paths <= signed_sync_base_paths:
+    raise SystemExit("signed-sync bundle cannot validate its canonical credential trust input")
+print("OK   four level, one capability, and three isolated semantic-pack bundles")
 
 
 all_capability_ids = capabilities.keys() | semantic_packs.keys()
@@ -275,6 +331,7 @@ if not set(manifest["capabilities"]) <= all_capability_ids:
 assert_declared_features_fit_level(manifest, "capsule")
 
 submissions = []
+reexported_submissions = []
 stream_paths = [stream["path"] for stream in manifest["streams"]]
 if len(stream_paths) != len(set(stream_paths)):
     raise SystemExit("duplicate capsule stream path")
@@ -284,35 +341,89 @@ for stream in manifest["streams"]:
     digest = "sha256:" + hashlib.sha256(content).hexdigest()
     if digest != stream["digest"] or len(content) != int(stream["byte_length"]):
         raise SystemExit(f'capsule stream metadata mismatch: {stream["path"]}')
-    if stream["media_type"] == "application/x-ndjson":
-        submissions.extend(json.loads(line) for line in content.splitlines() if line.strip())
+    activation = stream["activation_requirements"]
+    if activation["minimum_level"] not in levels:
+        raise SystemExit(f'unknown stream activation level: {stream["path"]}')
+    if not set(activation["capabilities"]) <= all_capability_ids:
+        raise SystemExit(f'unknown stream activation capability: {stream["path"]}')
+    if stream["handling"] == "activate":
+        if level_rank[activation["minimum_level"]] > level_rank[manifest["level"]]:
+            raise SystemExit(f'active stream exceeds Capsule level: {stream["path"]}')
+        if not set(activation["capabilities"]) <= set(manifest["capabilities"]):
+            raise SystemExit(f'active stream lacks Capsule capability: {stream["path"]}')
+    if stream["content_role"] == "submissions":
+        if stream["handling"] != "activate":
+            raise SystemExit(f'Capsule submission stream is not active: {stream["path"]}')
+        stream_submissions = [json.loads(line) for line in content.splitlines() if line.strip()]
+        with tempfile.TemporaryDirectory(prefix="ccf-submission-preserver-") as temporary:
+            export_path = Path(temporary) / stream["path"]
+            export_path.parent.mkdir(parents=True)
+            export_path.write_text(
+                "".join(
+                    json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
+                    for value in stream_submissions
+                )
+            )
+            reexported_stream = [
+                json.loads(line)
+                for line in export_path.read_text().splitlines()
+                if line.strip()
+            ]
+        if reexported_stream != stream_submissions:
+            raise SystemExit(f'active Capsule stream changed during import/export: {stream["path"]}')
+        submissions.extend(stream_submissions)
+        reexported_submissions.extend(reexported_stream)
+    elif stream["content_role"] == "opaque":
+        if stream["handling"] != "preserve_opaque":
+            raise SystemExit(f'opaque Capsule stream is not byte-preserved: {stream["path"]}')
+        required_level = stream["activation_requirements"]["minimum_level"]
+        required_capabilities = set(stream["activation_requirements"]["capabilities"])
+        requirements_exceed_declaration = (
+            level_rank[required_level] > level_rank[manifest["level"]]
+            or not required_capabilities <= set(manifest["capabilities"])
+        )
+        if not requirements_exceed_declaration:
+            raise SystemExit(f'opaque Capsule stream has no unsupported requirement: {stream["path"]}')
+        with tempfile.TemporaryDirectory(prefix="ccf-opaque-preserver-") as temporary:
+            export_path = Path(temporary) / stream["path"]
+            export_path.parent.mkdir(parents=True)
+            export_path.write_bytes(content)
+            reexported = export_path.read_bytes()
+        if reexported != content or hashlib.sha256(reexported).digest() != hashlib.sha256(content).digest():
+            raise SystemExit(f'opaque Capsule stream did not round trip byte-for-byte: {stream["path"]}')
 
 ids = [submission["id"] for submission in submissions]
 if len(ids) != len(set(ids)):
     raise SystemExit("duplicate object ID in capsule")
 if manifest["root_record_id"] not in ids:
     raise SystemExit("capsule root Record is absent")
+
+unknown_active_fixture = dict(submissions[0])
+unknown_active_fixture["type"] = "org.example.future-active"
+try:
+    registered_activation_requirement(unknown_active_fixture)
+except ValueError:
+    pass
+else:
+    raise SystemExit("unregistered semantics were allowed to activate")
+
 for submission in submissions:
     validate(
         f'urn:ccf:schema:0.1.2:submissions.{submission["submission_kind"]}',
         submission,
         f'capsule submission {submission["id"]}',
     )
-    resource_kind = f'{submission["submission_kind"]}_type'
-    if submission["submission_kind"] == "record":
-        resource_kind = "record_type"
-    elif submission["submission_kind"] == "link":
-        resource_kind = "link_type"
-    key = (resource_kind, submission.get("type", "blob.manifest"), submission.get("type_version", 1))
-    requirement = requirement_by_resource.get(key)
-    if requirement is not None:
-        if level_rank[requirement["minimum_level"]] > level_rank[manifest["level"]]:
-            raise SystemExit(f'capsule activates {submission["id"]} below its minimum level')
-        needed = set(requirement["required_capabilities"])
-        if requirement["semantic_pack"] is not None:
-            needed.add(requirement["semantic_pack"])
-        if not needed <= set(manifest["capabilities"]):
-            raise SystemExit(f'capsule activates {submission["id"]} without {sorted(needed)}')
+    try:
+        requirement = registered_activation_requirement(submission)
+    except ValueError as error:
+        raise SystemExit(f'capsule attempts to activate unregistered semantics for {submission["id"]}') from error
+    if level_rank[requirement["minimum_level"]] > level_rank[manifest["level"]]:
+        raise SystemExit(f'capsule activates {submission["id"]} below its minimum level')
+    needed = set(requirement["required_capabilities"])
+    if requirement["semantic_pack"] is not None:
+        needed.add(requirement["semantic_pack"])
+    if not needed <= set(manifest["capabilities"]):
+        raise SystemExit(f'capsule activates {submission["id"]} without {sorted(needed)}')
     if submission["submission_kind"] == "record" and submission["type_visibility"] == "clear":
         type_entry = base_registry_entries["record_type"].get(
             (submission["type"], submission["type_version"])
@@ -323,6 +434,33 @@ for submission in submissions:
                 submission["payload"],
                 f'capsule payload {submission["id"]}',
             )
+
+producer_batch_fixture = load_json(BASE / "vectors" / "producer-batch.json")["batch"]
+blob_submission = producer_batch_fixture["blobs"][0]
+validate(
+    "urn:ccf:schema:0.1.2:submissions.blob",
+    blob_submission,
+    "Exchange Blob submission envelope",
+)
+blob_requirement = registered_activation_requirement(blob_submission)
+if blob_requirement["minimum_level"] != "ccf-exchange-v1":
+    raise SystemExit("ordinary Blob submissions are not activatable at Exchange")
+
+producer_batch_validator = Draft202012Validator(
+    schemas["urn:ccf:schema:0.1.2:sync.producer-batch"],
+    registry=schema_registry,
+    format_checker=CCF_FORMAT_CHECKER,
+)
+max_sequence_batch = dict(producer_batch_fixture, producer_sequence=str(2**64 - 1))
+if list(producer_batch_validator.iter_errors(max_sequence_batch)):
+    raise SystemExit("producer batch schema rejects the maximum uint64 sequence")
+overflow_sequence_batch = dict(producer_batch_fixture, producer_sequence=str(2**64))
+if not list(producer_batch_validator.iter_errors(overflow_sequence_batch)):
+    raise SystemExit("producer batch schema accepts a uint64 overflow sequence")
+oversized_sequence_batch = dict(producer_batch_fixture, producer_sequence="9" * 4301)
+if not list(producer_batch_validator.iter_errors(oversized_sequence_batch)):
+    raise SystemExit("producer batch schema accepts an oversized decimal sequence")
+print("OK   CCF uint64 schema format boundary")
 
 included_or_declared = set(ids) | {
     dependency["object_id"] for dependency in manifest["dependencies"]
@@ -344,61 +482,89 @@ membership_links = {
 if not member_ids - {submission["id"] for submission in submissions if submission["submission_kind"] == "link"} <= membership_links:
     raise SystemExit("capsule object is not connected to the root by a membership Link")
 print(f"OK   capsule membership and streams ({len(submissions)} submissions)")
-availability_states = {entry["availability"] for entry in manifest["dependencies"]}
-if availability_states != {"external", "withheld", "erased"}:
-    raise SystemExit("capsule fixture does not keep external, withheld, and erased distinct")
 submission_by_id = {
     submission["id"]: submission for submission in submissions
 }
 unknown_extension = submission_by_id[manifest["root_record_id"]]["extensions"]
-if json.loads(json.dumps(unknown_extension)) != unknown_extension:
+reexported_by_id = {submission["id"]: submission for submission in reexported_submissions}
+if reexported_by_id[manifest["root_record_id"]]["extensions"] != unknown_extension:
     raise SystemExit("unknown Capsule extension did not round trip")
-
-origin_index = {}
-
-
-def import_submission(submission):
-    origin = submission.get("origin")
-    if origin is None:
-        return "admitted"
-    key = (
-        origin["source_id"],
-        origin["native_id"],
-        origin["revision"],
-        submission["submission_kind"],
-    )
-    digest = fixture_submission_hash(submission)
-    previous = origin_index.get(key)
-    if previous is None:
-        origin_index[key] = digest
-        return "admitted"
-    return "existing" if previous == digest else "origin_revision_conflict"
-
-
-origin_submission = next(submission for submission in submissions if submission.get("origin"))
-if import_submission(origin_submission) != "admitted" or import_submission(origin_submission) != "existing":
-    raise SystemExit("duplicate Capsule import is not idempotent")
-changed_submission = json.loads(json.dumps(origin_submission))
-changed_submission["payload"][next(iter(changed_submission["payload"]))] = "changed"
-if import_submission(changed_submission) != "origin_revision_conflict":
-    raise SystemExit("changed same-origin revision did not conflict")
-print("OK   unknown round trip, duplicate import, and revision conflict")
+opaque_stream = next(stream for stream in manifest["streams"] if stream["content_role"] == "opaque")
+opaque_bytes = (capsule_root / opaque_stream["path"]).read_bytes()
+opaque_values = [json.loads(line) for line in opaque_bytes.splitlines() if line.strip()]
+if {value["type"] for value in opaque_values} != {
+    "lineage.erasure_receipt",
+    "org.example.future-governance",
+}:
+    raise SystemExit("opaque fixture does not cover known-governed and unknown semantics")
+governed_opaque = next(
+    value for value in opaque_values if value["type"] == "lineage.erasure_receipt"
+)
+validate(
+    "urn:ccf:schema:0.1.2:payload.lineage.erasure_receipt",
+    governed_opaque["payload"],
+    "source governed payload retained opaquely",
+)
+print("OK   unknown extension and unsupported semantics preserved without activation")
 
 uplift = load_json(capsule_root / "uplift-receipt.json")
 validate("urn:ccf:schema:0.2.0:exchange.uplift-receipt", uplift, "uplift receipt")
+if (
+    uplift["source_pack_id"] != manifest["pack_id"]
+    or uplift["source_level"] != manifest["level"]
+    or uplift["destination_level"] != "ccf-verified-archive-v1"
+):
+    raise SystemExit("pending uplift is not bound to its L1 Capsule and L3 destination")
 if level_rank[uplift["destination_level"]] < level_rank[uplift["source_level"]]:
     raise SystemExit("uplift receipt moves to a weaker level")
-if {entry["source_id"] for entry in uplift["objects"]} != set(submission_by_id):
+uplift_source_ids = [entry["source_id"] for entry in uplift["objects"]]
+if (
+    len(uplift_source_ids) != len(submission_by_id)
+    or len(uplift_source_ids) != len(set(uplift_source_ids))
+    or set(uplift_source_ids) != set(submission_by_id)
+):
     raise SystemExit("uplift receipt does not cover every capsule object exactly once")
 for admission in uplift["objects"]:
     if admission["source_id"] != admission["canonical_id"]:
         raise SystemExit("uplift changed a supplied portable ID")
-    if admission["producer_authentication"] == "verified" and admission["producer_proof"] is None:
-        raise SystemExit("uplift silently strengthened producer authentication")
-    # Submission hashes are independently checked by the inherited L2 vectors;
-    # this fixture additionally pins the exact source assertion used for uplift.
-    if fixture_submission_hash(submission_by_id[admission["source_id"]]) != admission["source_submission_hash"]:
-        raise SystemExit(f'uplift source hash mismatch for {admission["source_id"]}')
+    if admission["producer_authentication"] == "verified":
+        raise SystemExit(
+            "verified producer authentication requires the signed-producer-sync verifier"
+        )
+    if admission["disposition"] in {"admitted", "existing"} and admission["object_hash"] is None:
+        raise SystemExit("completed uplift disposition lacks an object hash")
+    if admission["disposition"] in {"pending", "rejected", "conflict"} and admission["object_hash"] is not None:
+        raise SystemExit("incomplete uplift disposition claims an object hash")
+if uplift["status"] == "pending" and any(
+    admission["disposition"] != "pending" for admission in uplift["objects"]
+):
+    raise SystemExit("pending uplift contains a completed disposition")
+
+completed_uplift = load_json(capsule_root / "completed-uplift-receipt.json")
+validate(
+    "urn:ccf:schema:0.2.0:exchange.uplift-receipt",
+    completed_uplift,
+    "completed uplift receipt",
+)
+if (
+    completed_uplift["source_pack_id"] != manifest["pack_id"]
+    or completed_uplift["source_level"] != manifest["level"]
+    or completed_uplift["destination_level"] != "ccf-canonical-store-v1"
+):
+    raise SystemExit("completed uplift is not bound to its L1 Capsule and L2 destination")
+completed_source_ids = [entry["source_id"] for entry in completed_uplift["objects"]]
+if (
+    completed_uplift["status"] != "accepted"
+    or len(completed_source_ids) != len(submission_by_id)
+    or len(completed_source_ids) != len(set(completed_source_ids))
+    or set(completed_source_ids) != set(submission_by_id)
+):
+    raise SystemExit("completed uplift does not accept every Capsule object")
+for admission in completed_uplift["objects"]:
+    if admission["source_id"] != admission["canonical_id"]:
+        raise SystemExit("completed uplift changed a supplied portable ID")
+    if admission["producer_authentication"] == "verified":
+        raise SystemExit("completed uplift silently strengthened producer authentication")
 
 downgrade = load_json(capsule_root / "downgrade-receipt.json")
 validate("urn:ccf:schema:0.2.0:exchange.downgrade-receipt", downgrade, "downgrade receipt")
@@ -406,6 +572,245 @@ if downgrade["losslessness"] == "lossy" and not downgrade["omissions"]:
     raise SystemExit("lossy downgrade did not enumerate omissions")
 if level_rank[downgrade["target_level"]] >= level_rank[downgrade["source_level"]]:
     raise SystemExit("downgrade receipt does not move to a weaker level")
+inventories = {}
+inventory_categories = {
+    "submission",
+    "journal_proof",
+    "policy_state",
+    "lineage_state",
+    "compartment",
+    "blob_content",
+    "unknown_extension",
+    "registry",
+    "schema",
+    "other",
+}
+for name in ("source_inventory", "export_inventory"):
+    inventory_ref = downgrade[name]
+    inventory_path = capsule_root / inventory_ref["path"]
+    content = inventory_path.read_bytes()
+    digest = "sha256:" + hashlib.sha256(content).hexdigest()
+    if digest != inventory_ref["digest"]:
+        raise SystemExit(f"downgrade {name} digest mismatch")
+    entries = load_json(inventory_path)
+    validate(
+        "urn:ccf:schema:0.2.0:exchange.downgrade-inventory",
+        entries,
+        f"downgrade {name}",
+    )
+    if any(
+        set(entry) != {"category", "subject", "digest"}
+        or entry["category"] not in inventory_categories
+        or not isinstance(entry["subject"], str)
+        or not entry["subject"]
+        or not isinstance(entry["digest"], str)
+        for entry in entries
+    ):
+        raise SystemExit(f"downgrade {name} contains an invalid entry")
+    for entry in entries:
+        if entry["category"] == "submission" and entry["subject"].startswith("submission:urn:ccf:"):
+            continue
+        artifact = (capsule_root / entry["subject"]).read_bytes()
+        artifact_digest = "sha256:" + hashlib.sha256(artifact).hexdigest()
+        if artifact_digest != entry["digest"]:
+            raise SystemExit(
+                f'downgrade {name} artifact digest mismatch: {entry["subject"]}'
+            )
+    keys = {(entry["category"], entry["subject"]) for entry in entries}
+    if len(keys) != len(entries):
+        raise SystemExit(f"downgrade {name} contains duplicate entries")
+    inventories[name] = {
+        (entry["category"], entry["subject"]): entry["digest"]
+        for entry in entries
+    }
+source_inventory_entries = inventories["source_inventory"]
+export_inventory_entries = inventories["export_inventory"]
+source_inventory = set(source_inventory_entries)
+export_inventory = set(export_inventory_entries)
+if not export_inventory <= source_inventory:
+    raise SystemExit("downgrade export inventory adds undeclared source material")
+if any(
+    source_inventory_entries[key] != export_inventory_entries[key]
+    for key in export_inventory
+):
+    raise SystemExit("downgrade changed an exported logical item digest")
+omission_keys = {(entry["category"], entry["subject"]) for entry in downgrade["omissions"]}
+if len(omission_keys) != len(downgrade["omissions"]):
+    raise SystemExit("downgrade receipt contains duplicate omissions")
+if omission_keys != source_inventory - export_inventory:
+    raise SystemExit("downgrade omissions are not the exact source/export inventory difference")
+for item in downgrade["preserved_opaque"]:
+    content = (capsule_root / item["path"]).read_bytes()
+    digest = "sha256:" + hashlib.sha256(content).hexdigest()
+    if digest != item["digest"]:
+        raise SystemExit(f'downgrade opaque preservation digest mismatch: {item["path"]}')
+
+# The selected downgrade source is a real 0.1.2 Verified fixture. Its journal
+# members and producer batch must resolve to the exact portable objects included
+# in the pinned source inventory; unrelated valid proofs are not sufficient.
+downgrade_source = capsule_root / "downgrade-source"
+downgrade_export = capsule_root / "downgrade-export"
+source_identity = load_json(downgrade_source / "source-identity.json")
+expected_identity_fields = {
+    "format",
+    "archive_id",
+    "epoch_id",
+    "genesis_commit_hash",
+    "head_commit_hash",
+    "head_sequence",
+    "semantic_catalog_root",
+    "trusted_genesis_signer_key_id",
+    "trusted_genesis_signer_public_key",
+}
+if set(source_identity) != expected_identity_fields:
+    raise SystemExit("downgrade source identity has missing or unknown fields")
+
+physical_source_inventory = {
+    subject.removeprefix("downgrade-source/")
+    for category, subject in source_inventory
+    if category != "submission" and subject.startswith("downgrade-source/")
+}
+actual_source_files = {
+    path.relative_to(downgrade_source).as_posix()
+    for path in downgrade_source.rglob("*")
+    if path.is_file()
+}
+if physical_source_inventory != actual_source_files:
+    raise SystemExit("downgrade source inventory is not the exact physical source package")
+
+downgrade_export_manifest = load_json(downgrade_export / "manifest.json")
+validate(
+    "urn:ccf:schema:0.2.0:exchange.capsule-manifest",
+    downgrade_export_manifest,
+    "downgrade export Capsule manifest",
+)
+if downgrade_export_manifest["pack_id"] != downgrade["export_pack_id"]:
+    raise SystemExit("downgrade receipt export_pack_id does not bind the exported Capsule")
+if (
+    downgrade_export_manifest["level"] != downgrade["target_level"]
+    or downgrade_export_manifest["custody"]["losslessness"] != downgrade["losslessness"]
+    or downgrade_export_manifest["custody"]["omissions"] != downgrade["omissions"]
+):
+    raise SystemExit("downgrade export Capsule does not carry the receipt's downgrade declaration")
+export_streams = downgrade_export_manifest["streams"]
+export_stream_paths = [stream["path"] for stream in export_streams]
+if len(export_stream_paths) != len(set(export_stream_paths)):
+    raise SystemExit("downgrade export Capsule has duplicate stream paths")
+expected_export_files = {"manifest.json", *export_stream_paths}
+actual_export_files = {
+    path.relative_to(downgrade_export).as_posix()
+    for path in downgrade_export.rglob("*")
+    if path.is_file()
+}
+if expected_export_files != actual_export_files:
+    raise SystemExit("downgrade export Capsule has unmanifested or missing files")
+for stream in export_streams:
+    content = (downgrade_export / stream["path"]).read_bytes()
+    digest = "sha256:" + hashlib.sha256(content).hexdigest()
+    if digest != stream["digest"] or len(content) != int(stream["byte_length"]):
+        raise SystemExit(f'downgrade export stream metadata mismatch: {stream["path"]}')
+
+source_headers = {}
+for kind in ("records", "links", "blobs"):
+    for line in (downgrade_source / "objects" / f"{kind}.ndjson").read_text().splitlines():
+        if line.strip():
+            header = json.loads(line)
+            source_headers[header["id"]] = header
+source_commits = [
+    json.loads(line)
+    for line in (downgrade_source / "integrity" / "commits.ndjson").read_text().splitlines()
+    if line.strip()
+]
+source_members = [
+    json.loads(line)
+    for line in (downgrade_source / "integrity" / "members.ndjson").read_text().splitlines()
+    if line.strip()
+]
+commit_by_sequence = {commit["sequence"]: commit for commit in source_commits}
+if len(commit_by_sequence) != len(source_commits):
+    raise SystemExit("downgrade source contains duplicate commit sequences")
+for commit in source_commits:
+    header = source_headers.get(commit["record_id"])
+    if header is None or header["object_hash"] != commit["commit_hash"]:
+        raise SystemExit("downgrade source commit is not bound to its portable object")
+    uuid = commit["record_id"].rsplit(":", 1)[1]
+    compartment_path = f"downgrade-source/compartments/records/{uuid}.structural.json"
+    if ("compartment", compartment_path) not in source_inventory:
+        raise SystemExit("downgrade source omits a signed commit compartment")
+for member in source_members:
+    header = source_headers.get(member["object_id"])
+    if header is None or header["object_hash"] != member["object_hash"]:
+        raise SystemExit("downgrade source member is not bound to its portable object")
+    if member["commit_sequence"] not in commit_by_sequence:
+        raise SystemExit("downgrade source member references an absent commit")
+producer_batches = list((downgrade_source / "producer-batches").glob("*.json"))
+if len(producer_batches) != 1:
+    raise SystemExit("downgrade source must contain exactly one selected producer batch")
+source_batch = load_json(producer_batches[0])
+batch_submissions = [
+    item
+    for field in ("records", "links", "blobs")
+    for item in source_batch[field]
+]
+batch_ids = {item["id"] for item in batch_submissions}
+if not batch_ids or not batch_ids <= source_headers.keys():
+    raise SystemExit("downgrade producer batch does not resolve to its canonical source objects")
+submission_streams = [
+    stream for stream in export_streams if stream["content_role"] == "submissions"
+]
+if len(submission_streams) != 1:
+    raise SystemExit("downgrade export Capsule must contain exactly one submission stream")
+exported_submissions = [
+    json.loads(line)
+    for line in (downgrade_export / submission_streams[0]["path"]).read_text().splitlines()
+    if line.strip()
+]
+batch_submission_by_id = {submission["id"]: submission for submission in batch_submissions}
+if len(exported_submissions) != 1 or any(
+    batch_submission_by_id.get(submission["id"]) != submission
+    for submission in exported_submissions
+):
+    raise SystemExit("downgrade Exchange assertions are not exact source batch submissions")
+if downgrade_export_manifest["root_record_id"] != exported_submissions[0]["id"]:
+    raise SystemExit("downgrade export root is not its selected source assertion")
+for submission in exported_submissions:
+    validate(
+        f'urn:ccf:schema:0.1.2:submissions.{submission["submission_kind"]}',
+        submission,
+        f'downgrade export submission {submission["id"]}',
+    )
+    requirement = registered_activation_requirement(submission)
+    if requirement["minimum_level"] != "ccf-exchange-v1":
+        raise SystemExit("downgrade export activates an assertion above Exchange")
+logical_export_ids = {
+    subject.removeprefix("submission:")
+    for category, subject in export_inventory
+    if category == "submission" and subject.startswith("submission:")
+}
+if logical_export_ids != {submission["id"] for submission in exported_submissions}:
+    raise SystemExit("downgrade logical inventory does not exactly cover its Exchange assertions")
+origin_rows = {
+    row["object_id"]: row
+    for line in (downgrade_source / "origin-index.ndjson").read_text().splitlines()
+    if line.strip()
+    for row in [json.loads(line)]
+}
+for submission in exported_submissions:
+    header = source_headers[submission["id"]]
+    uuid = submission["id"].rsplit(":", 1)[1]
+    plural_kind = f'{submission["submission_kind"]}s'
+    structural_path = f"downgrade-source/compartments/{plural_kind}/{uuid}.structural.json"
+    if ("compartment", structural_path) not in source_inventory:
+        raise SystemExit(f"downgrade source omits structural compartment for {submission['id']}")
+    semantic_path = f"downgrade-source/compartments/{plural_kind}/{uuid}.semantic.json"
+    if header["semantic_commitment"] is not None and ("compartment", semantic_path) not in source_inventory:
+        raise SystemExit(f"downgrade source omits semantic compartment for {submission['id']}")
+    origin = submission.get("origin")
+    if origin is not None:
+        row = origin_rows.get(submission["id"])
+        if row is None or any(row[field] != origin[field] for field in ("source_id", "native_id", "revision")):
+            raise SystemExit(f"downgrade source origin tuple mismatch for {submission['id']}")
+print("OK   downgrade source journal, objects, and producer batch correspond")
 
 
 base_catalog = load_json(BASE / "semantic-catalog.json")

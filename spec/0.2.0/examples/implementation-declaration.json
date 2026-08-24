@@ -5,8 +5,7 @@
   "level": "ccf-canonical-store-v1",
   "roles": ["producer", "preserver", "importer-exporter"],
   "capabilities": [
-    "ccf-continuity-pack-v1",
-    "ccf-archive-encryption-derived-v1"
+    "ccf-continuity-pack-v1"
   ],
   "portable_formats": ["ccf/0.1.2"],
   "semantic_catalog_roots": [

@@ -58,7 +58,7 @@ spec/0.2.0/
   CCF-0.2.0-DRAFT.md  layered-conformance working draft
   schemas/            declaration, registry, Capsule, and receipt schemas
   registries/         levels, roles, capabilities, packs, and requirements
-  bundles/            level and semantic-pack distribution manifests
+  bundles/            level, capability, and semantic-pack manifests
   examples/capsule/   executable scoped-exchange fixture
   tools/              tiered conformance checks
 ```
@@ -78,6 +78,10 @@ Working Draft:
 ```bash
 make check-draft
 ```
+
+The individual root targets are `check-draft-exchange`,
+`check-draft-canonical`, `check-draft-verified`, `check-draft-governed`, and
+`check-draft-signed-producer-sync`.
 
 To prove that every generated artifact is reproducible:
 
