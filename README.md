@@ -30,6 +30,18 @@ The current standards package is [CCF 0.1.2](spec/0.1.2/README.md). It includes:
 - OpenAPI and PostgreSQL reference envelopes;
 - deterministic build and conformance tools.
 
+## Layered-conformance working draft
+
+[CCF 0.2.0](spec/0.2.0/README.md) is an additive Working Draft that separates
+implementation roles, cumulative guarantee levels, optional capabilities, and
+semantic packs. It also introduces CCF Capsule for scoped knowledge transfer
+and tiered `check-exchange`, `check-canonical`, `check-verified`, and
+`check-governed` suites.
+
+The draft pins and reuses the 0.1.2 portable object and hash formats. It does not
+change the published meaning of 0.1.2 or require existing objects to be
+rewritten. CCF 0.1.2 remains the current interoperability release.
+
 ## Repository layout
 
 ```text
@@ -42,6 +54,13 @@ spec/0.1.2/
   openapi/             reference API contract
   sql/                 reference PostgreSQL envelope
   tools/               build and verification tools
+spec/0.2.0/
+  CCF-0.2.0-DRAFT.md  layered-conformance working draft
+  schemas/            declaration, registry, Capsule, and receipt schemas
+  registries/         levels, roles, capabilities, packs, and requirements
+  bundles/            level and semantic-pack distribution manifests
+  examples/capsule/   executable scoped-exchange fixture
+  tools/              tiered conformance checks
 ```
 
 ## Verify the package
@@ -51,6 +70,13 @@ starts a disposable PostgreSQL 16 container with pgvector.
 
 ```bash
 make check
+```
+
+To verify the default Exchange and Canonical Store boundaries of the 0.2.0
+Working Draft:
+
+```bash
+make check-draft
 ```
 
 To prove that every generated artifact is reproducible:

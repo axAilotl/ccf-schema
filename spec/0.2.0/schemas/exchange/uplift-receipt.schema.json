@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ccf:schema:0.2.0:exchange.uplift-receipt",
+  "title": "CCF Uplift Receipt",
+  "type": "object",
+  "properties": {
+    "format": {"const": "ccf.uplift-receipt/0.2.0"},
+    "receipt_id": {"type": "string", "pattern": "^urn:ccf:receipt:[0-9a-f-]{36}$"},
+    "source_pack_id": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/packUrn"},
+    "source_level": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/levelId"},
+    "destination_level": {"$ref": "urn:ccf:schema:0.2.0:common.defs#/$defs/levelId"},
+    "destination_archive_id": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/archiveUrn"},
+    "created_at": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/timestamp"},
+    "status": {"enum": ["accepted", "partially_accepted", "rejected", "conflict"]},
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "object_kind": {"enum": ["record", "link", "blob"]},
+          "source_id": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/objectUrn"},
+          "source_submission_hash": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/digest"},
+          "canonical_id": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/objectUrn"},
+          "object_hash": {
+            "oneOf": [
+              {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/digest"},
+              {"type": "null"}
+            ]
+          },
+          "disposition": {"enum": ["admitted", "existing", "rejected", "conflict"]},
+          "producer_authentication": {
+            "enum": ["absent", "preserved_unsigned", "verified", "rejected"]
+          },
+          "producer_proof": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+          "archive_resolution": {"type": "object"}
+        },
+        "required": [
+          "object_kind", "source_id", "source_submission_hash", "canonical_id",
+          "object_hash", "disposition", "producer_authentication", "producer_proof",
+          "archive_resolution"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "object_id": {"$ref": "urn:ccf:schema:0.1.2:common.defs#/$defs/objectUrn"},
+          "code": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1}
+        },
+        "required": ["object_id", "code", "detail"],
+        "additionalProperties": false
+      }
+    },
+    "extensions": {"type": "object"}
+  },
+  "required": [
+    "format", "receipt_id", "source_pack_id", "source_level", "destination_level",
+    "destination_archive_id", "created_at", "status", "objects", "conflicts", "extensions"
+  ],
+  "additionalProperties": false
+}
+
