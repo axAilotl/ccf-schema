@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import {
   canonicalize,
   canonicalDigest,
@@ -19,7 +20,7 @@ import {
   suppressionScopeCommitment,
 } from './ccf-jcs.mjs';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EX = path.join(ROOT, 'examples', 'personal-archive');
 const MP = path.join(ROOT, 'examples', 'mindpack');
 fs.rmSync(EX, { recursive: true, force: true });

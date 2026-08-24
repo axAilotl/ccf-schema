@@ -63,6 +63,7 @@ To build a deterministic release ZIP and checksum:
 
 ```bash
 make package
+(cd spec && sha256sum -c ccf-0.1.2.zip.sha256)
 ```
 
 ## Status

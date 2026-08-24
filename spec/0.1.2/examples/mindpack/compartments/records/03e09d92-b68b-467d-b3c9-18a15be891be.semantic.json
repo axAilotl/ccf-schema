@@ -19,7 +19,7 @@
       "head_id_at_write": null,
       "policy_object_hash": null,
       "evaluator_profile": "ccf-deny-overrides-v1",
-      "semantic_catalog_root": "sha256:447aa218156d0b33861090c5931bee78bc4a59300e94feacbcf89eb9d35dbc10"
+      "semantic_catalog_root": "sha256:992490912d2faffc1084d43041bd228d64265671ffa36840b30f62c0d1fea9e8"
     },
     "authority": {
       "basis": "explicit_authorization",

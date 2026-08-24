@@ -1,6 +1,7 @@
 VERSION := 0.1.2
 PACKAGE := spec/$(VERSION)
-ARCHIVE := spec/ccf-$(VERSION).zip
+ARCHIVE_NAME := ccf-$(VERSION).zip
+ARCHIVE := spec/$(ARCHIVE_NAME)
 
 .PHONY: check rebuild reproduce package
 
@@ -15,4 +16,4 @@ reproduce:
 
 package:
 	$(MAKE) -C $(PACKAGE) package
-	sha256sum $(ARCHIVE) > $(ARCHIVE).sha256
+	cd spec && sha256sum $(ARCHIVE_NAME) > $(ARCHIVE_NAME).sha256

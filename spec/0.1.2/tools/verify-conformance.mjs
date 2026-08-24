@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { blobContentCommitment, compartmentCommitment, suppressionContentToken, suppressionMerkleRoot, suppressionOriginToken, suppressionScopeCommitment } from './ccf-jcs.mjs';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const vector = JSON.parse(fs.readFileSync(path.join(ROOT, 'vectors', 'conformance-0.1.2.json')));
 const declared = new Set(vector.cases.map((entry) => entry.id));
 const passed = new Set();
@@ -159,26 +160,30 @@ pass('admission-membership');
 // idempotent retry using stable commit identities.
 const gitFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'ccf-git-fixture-'));
 function git(...args) { return execFileSync('git', args, { cwd: gitFixture, encoding: 'utf8' }).trim(); }
-git('init', '--quiet');
-git('config', 'user.name', 'CCF Fixture');
-git('config', 'user.email', 'fixture@example.invalid');
-fs.writeFileSync(path.join(gitFixture, 'note.txt'), 'v1\n');
-fs.writeFileSync(path.join(gitFixture, 'binary.dat'), Buffer.from([0, 255, 1, 2]));
-git('add', 'note.txt', 'binary.dat'); git('commit', '--quiet', '-m', 'create text and binary');
-fs.renameSync(path.join(gitFixture, 'note.txt'), path.join(gitFixture, 'renamed.txt'));
-fs.appendFileSync(path.join(gitFixture, 'renamed.txt'), 'v2\n');
-git('add', '-A'); git('commit', '--quiet', '-m', 'rename and evolve text');
-fs.rmSync(path.join(gitFixture, 'renamed.txt'));
-fs.writeFileSync(path.join(gitFixture, 'binary.dat'), Buffer.from([0, 254, 1, 3]));
-git('add', '-A'); git('commit', '--quiet', '-m', 'delete text and evolve binary');
-const commits = git('rev-list', '--reverse', 'HEAD').split('\n');
-check(commits.length === 3 && new Set(commits).size === 3, 'three Git commits');
-check(git('log', '--format=', '--name-status', '--find-renames').includes('R'), 'Git rename represented');
-check(git('log', '--format=', '--name-status').includes('D'), 'Git deletion represented');
-check(git('show', 'HEAD:binary.dat').length > 0, 'Git binary content represented');
-const replayed = new Set([...commits, ...commits]);
-check(replayed.size === commits.length, 'Git retry is idempotent by commit identity');
-pass('git-three-commit');
+try {
+  git('init', '--quiet');
+  git('config', 'user.name', 'CCF Fixture');
+  git('config', 'user.email', 'fixture@example.invalid');
+  fs.writeFileSync(path.join(gitFixture, 'note.txt'), 'v1\n');
+  fs.writeFileSync(path.join(gitFixture, 'binary.dat'), Buffer.from([0, 255, 1, 2]));
+  git('add', 'note.txt', 'binary.dat'); git('commit', '--quiet', '-m', 'create text and binary');
+  fs.renameSync(path.join(gitFixture, 'note.txt'), path.join(gitFixture, 'renamed.txt'));
+  fs.appendFileSync(path.join(gitFixture, 'renamed.txt'), 'v2\n');
+  git('add', '-A'); git('commit', '--quiet', '-m', 'rename and evolve text');
+  fs.rmSync(path.join(gitFixture, 'renamed.txt'));
+  fs.writeFileSync(path.join(gitFixture, 'binary.dat'), Buffer.from([0, 254, 1, 3]));
+  git('add', '-A'); git('commit', '--quiet', '-m', 'delete text and evolve binary');
+  const commits = git('rev-list', '--reverse', 'HEAD').split('\n');
+  check(commits.length === 3 && new Set(commits).size === 3, 'three Git commits');
+  check(git('log', '--format=', '--name-status', '--find-renames').includes('R'), 'Git rename represented');
+  check(git('log', '--format=', '--name-status').includes('D'), 'Git deletion represented');
+  check(git('show', 'HEAD:binary.dat').length > 0, 'Git binary content represented');
+  const replayed = new Set([...commits, ...commits]);
+  check(replayed.size === commits.length, 'Git retry is idempotent by commit identity');
+  pass('git-three-commit');
+} finally {
+  fs.rmSync(gitFixture, { recursive: true, force: true });
+}
 
 // 12. Authority-vector coverage is checked here independently of generation.
 const authorityRegistry = JSON.parse(fs.readFileSync(path.join(ROOT, 'registries', 'admission-authority-classes.registry.json')));

@@ -7,7 +7,7 @@
     "previous_batch_hash": null,
     "credential_id": "urn:ccf:credential:6d4a95ba-bed6-450b-b907-b9e7f0816353",
     "created_at": "2026-08-11T21:42:20.300Z",
-    "semantic_catalog_root": "sha256:447aa218156d0b33861090c5931bee78bc4a59300e94feacbcf89eb9d35dbc10",
+    "semantic_catalog_root": "sha256:992490912d2faffc1084d43041bd228d64265671ffa36840b30f62c0d1fea9e8",
     "records": [
       {
         "submission_kind": "record",
@@ -719,9 +719,9 @@
     ],
     "extensions": {},
     "signature_profile": "ed25519-jcs-v1",
-    "batch_hash": "sha256:11cd2279a643223a12d4440a547672aa9a75179d85f8c71af9d339873a9dec41",
-    "signature": "6nfNCgdxYMvGZg5c0eF0SpR3v5nxt4ZduEejNs98gLREozJw-GF_3BAMm5C3_NNt8GfwnGZAwgg-Ck89qh7XBg"
+    "batch_hash": "sha256:b60b6ed289babc9a42795f5cc8c7f238b3edcef8f5e9a98004b281f47f9b2342",
+    "signature": "EW5LH9sj4ptuMa_mTBCOQVWGba7U104_l7y_AgyTyJIpK4JU80LHpRgT1MRBaHDuIcoeQqfvUTyU-1J0I0tsAw"
   },
-  "expected_batch_hash": "sha256:11cd2279a643223a12d4440a547672aa9a75179d85f8c71af9d339873a9dec41",
+  "expected_batch_hash": "sha256:b60b6ed289babc9a42795f5cc8c7f238b3edcef8f5e9a98004b281f47f9b2342",
   "expected_signature_valid": true
 }

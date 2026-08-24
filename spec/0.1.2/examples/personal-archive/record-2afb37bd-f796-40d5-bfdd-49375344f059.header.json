@@ -3,7 +3,7 @@
   "object_kind": "record",
   "id": "urn:ccf:record:2afb37bd-f796-40d5-bfdd-49375344f059",
   "hash_profile": "ccf-jcs-sha256-v2",
-  "structural_commitment": "sha256:60f27da0319a21f490a969f718d4b19ee55bc23f1577dbd47b5355fa645d7b36",
+  "structural_commitment": "sha256:0c4054e7348e654cc8c2fda73300ea5a821237a9fe68224d4cef77d6df182393",
   "semantic_commitment": null,
-  "object_hash": "sha256:765a47d496853e802469dd339e042daaa618455e8c36d8926c60ec24708d109e"
+  "object_hash": "sha256:9aa22b97dac8cd0e56bd1eeb360d964b80197df9a9b4dcb14e60fe14ba3e94f9"
 }
