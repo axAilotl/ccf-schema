@@ -20,4 +20,3 @@ The object hashes in `uplift-receipt.json` demonstrate the receipt shape. The
 fixture does not include the destination's canonical compartments, so those
 hashes are not canonical test vectors. Canonical identity is tested separately
 against the inherited 0.1.2 vectors by `check-canonical`.
-

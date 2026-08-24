@@ -44,4 +44,3 @@ Recovery must yield no duplicate stable origins and no missing finalized
 semantic artifacts. A retry with the same origin and identical submission is
 idempotent; the same origin revision with different submission content is an
 explicit conflict.
-

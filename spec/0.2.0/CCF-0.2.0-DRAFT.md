@@ -1,7 +1,7 @@
 # Continuity Core Format 0.2.0 Working Draft
 
-**Status:** Working Draft  
-**Published compatibility base:** `ccf-0.1.2`  
+**Status:** Working Draft
+**Published compatibility base:** `ccf-0.1.2`
 **Portable object format:** `ccf/0.1.2`
 
 ## 1. Scope and compatibility boundary

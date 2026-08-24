@@ -160,4 +160,3 @@ for (const definition of bundleDefinitions) {
   );
 }
 console.log(`distribution bundles: ${bundleDefinitions.length}`);
-

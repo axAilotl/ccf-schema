@@ -39,4 +39,3 @@
   "required": ["registry", "entries"],
   "additionalProperties": false
 }
-

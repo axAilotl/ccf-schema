@@ -9,7 +9,7 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "CCF-0.2.0-DRAFT.md",
-      "digest": "sha256:78e5ff7524636f766cf3752465d230af885d2c51d5df6acf9295a0a26b1601c6"
+      "digest": "sha256:6d8be334a469e29e62143cbb2f060dc4dc8862754db666a66028f46cf4f29d10"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -24,32 +24,32 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/capabilities.registry.json",
-      "digest": "sha256:67caa7e21773841dad63e891ad1c5f2ea72d701cc38e8663a3ef5e2990b15d61"
+      "digest": "sha256:63cf750e739384265d8590e586b47464df478005e67b634efc733b819820d2c5"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/compatibility-rules.registry.json",
-      "digest": "sha256:9f85ea35431a284a42bcc3588695db7999094f9dcd043a9378fc39ee5315e1c4"
+      "digest": "sha256:788c7646cd65c8446123868d443b4e2b2d136d65e1075bb84f7083ca5356619a"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/legacy-profile-mappings.registry.json",
-      "digest": "sha256:a5a6f6d987fea1d06034c330d0614b59b57031d55e15d5317896f49b2c91b126"
+      "digest": "sha256:2b33d4cf10c252393338d64ce57fd95bc37917432718d0a0bae84f2e8be62523"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/levels.registry.json",
-      "digest": "sha256:854885711473f48ab100fa250a222d8a2939b28edacb18fdda67db9850a99972"
+      "digest": "sha256:b5aa01604127e16fe122a675f9c2382bbcdf8b75ac2397327a32883d19729028"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/roles.registry.json",
-      "digest": "sha256:b794c526922e14e8bf0c5d30c70a17e9619432e7bc2fc10449cf358e79d0567b"
+      "digest": "sha256:2f8af965444508e0da6ae9ca4b57c66d3ef939229a728ba6796d1906a2db9e34"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "registries/semantic-packs.registry.json",
-      "digest": "sha256:e92d563bf1598070343672467f40c3f1ddfd095af98e0cb07ba49d9d0c402ef4"
+      "digest": "sha256:406b30081f071711341979c2e0d7d1742c2072c6e327abb486ece33e5ba3f77c"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -59,7 +59,7 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/README.md",
-      "digest": "sha256:9a80806741283e695a2199c6426f20087dbf8e4d51339b536e565f9cc0ba5051"
+      "digest": "sha256:fbc0d4eb01f53f89f96ff053a6ee01ee2599acd8b4d53fa5af6e6a18da987b91"
     },
     {
       "source_package": "ccf-0.2.0",
@@ -69,62 +69,62 @@
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/common/defs.schema.json",
-      "digest": "sha256:49e7f0b1d07af96bd7ad18ee1897d825c68166a8ae47a332d4e3532de62d202c"
+      "digest": "sha256:b5cfaf7ea90689c26b1431dee67994da453ac1a19a0be047e7759ab134818942"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/declarations/bundle-manifest.schema.json",
-      "digest": "sha256:e82cd61114c285b3b0314365764a30f94acfd71d7e89666eae3223d6dc3fc60c"
+      "digest": "sha256:58d9439186624cb00b5f2e4df82c314e72a70657b1d31a2d0df5fc3c5ea8d2a4"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/declarations/implementation.schema.json",
-      "digest": "sha256:e1d0669618f08a7e3e40770bd74e63f150e447876e92f0b82a77acfeae8ada63"
+      "digest": "sha256:5e4c7abb97c6233d02452588876dfe897f8a3c133a0e59f54ae76fe4c8631ad0"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/capsule-manifest.schema.json",
-      "digest": "sha256:46ed4fea26d92d4dcdbf6904644f5d5a8fdf537afcea8ab79a3784d1546c257b"
+      "digest": "sha256:9efeb8935dfb4ab6cb2006a85fffdb30aa4466fdff6ac4b96b7a87f8e376b158"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/downgrade-receipt.schema.json",
-      "digest": "sha256:264ab4c7800297037fc12e625d53aa6d18e0f9ebda4c1ebce48843cf0706087c"
+      "digest": "sha256:52b6bc6d9769952d3ff88f75bcb08d2adcdf68e21dfd4acf63030ebc320fd136"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/exchange/uplift-receipt.schema.json",
-      "digest": "sha256:e1e65c1b81c35ba4fd7668e712dc37fc116d9ede0b7d4b3c4fd02de78f031efc"
+      "digest": "sha256:ab10e04e662f16447fbf01a5d8ff3975a354dbf31acaa68f36554d69769ce7e6"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/capability-registry.schema.json",
-      "digest": "sha256:c35c97192e60458ec83107ecdbe45cff4f38d3e1dc0cda6cb36c1d81d29c85c0"
+      "digest": "sha256:620cb3413a3d9b1c5f6c3158a80b1529ac24651dda68581678f5c4ad58c501fd"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/compatibility-rule-registry.schema.json",
-      "digest": "sha256:27d355f8328c671919d982e3df15cfe1f7827e27893d285ddee6707c87a147f3"
+      "digest": "sha256:6f57465530909ffbecea3be077922a6efb771740eaa3d55cc461b6e3713e130e"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/legacy-profile-mapping-registry.schema.json",
-      "digest": "sha256:433e55680d440676991f5cda1b890e0f5bacf36c3717db66fe7abbeeaccac9da"
+      "digest": "sha256:9fcf910126c65b443a0b6226179ad5b1d56bc81f7e2cd8ad9c7095dd9bae6939"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/level-registry.schema.json",
-      "digest": "sha256:2b5bb636549a9c1c70a86cb8adb9711e2b13327fe4ebf25f2250890cd3526f30"
+      "digest": "sha256:4db21ae2acae942d9f7f6320e28297dbd27cf40baefbc9fd2835c15959805951"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/role-registry.schema.json",
-      "digest": "sha256:97b3e5c98b40c5ee03a22849fc4ad0990fddbb563fffb37235685f9d530600de"
+      "digest": "sha256:0b7cdc062b3dd7c609c5adc6e2f666160af31379018857d7ce9a3207fb4a8b84"
     },
     {
       "source_package": "ccf-0.2.0",
       "path": "schemas/registries/semantic-pack-registry.schema.json",
-      "digest": "sha256:95d493cbee3e4c8a8e5eb93b4415628b0232a5c98d3a1fa298238596f21b6622"
+      "digest": "sha256:ba68b58f8d53a6a905be7fd0dd6e41410eeaa15a4144784c2d6816f2a416d10b"
     },
     {
       "source_package": "ccf-0.2.0",

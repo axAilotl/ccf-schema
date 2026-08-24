@@ -18,4 +18,3 @@ database-backed checks remain at Governed Archive.
 Capability suites are independent of this cumulative chain. A deployment runs
 the suite for each capability it declares; absence of a capability is not a
 failure of its guarantee level.
-

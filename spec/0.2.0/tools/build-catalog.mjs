@@ -69,4 +69,3 @@ fs.writeFileSync(
 console.log(
   `semantic catalog ${semanticCatalog.root} (${schemas.length} schemas, ${registries.length} registries)`,
 );
-

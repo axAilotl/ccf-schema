@@ -36,4 +36,3 @@ archive kernel prove integration but not independent interoperability. A full
 independent claim needs a separately written generator or verifier. That second
 implementation can target Exchange and Canonical Store before implementing an
 archive or governance engine.
-

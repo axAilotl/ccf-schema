@@ -35,4 +35,3 @@
   "required": ["format", "status", "id", "kind", "provides", "depends_on", "artifacts"],
   "additionalProperties": false
 }
-

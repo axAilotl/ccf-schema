@@ -19,4 +19,3 @@ the 0.1.2 distribution.
 
 Each artifact entry names its source package and raw SHA-256 digest. Run
 `make rebuild` after changing schemas, registries, or draft documentation.
-
