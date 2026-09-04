@@ -24,7 +24,9 @@ The draft adds:
 - tiered conformance entry points.
 
 Start with [CCF-0.2.0-DRAFT.md](CCF-0.2.0-DRAFT.md). The executable Capsule is
-under [examples/capsule](examples/capsule/README.md).
+under [examples/capsule](examples/capsule/README.md). For the current builds, use
+the [Cissa-to-Thoth acceptance checks](docs/adoption-and-interoperability.md#cissa-to-thoth-build-acceptance-checks)
+and [reference verification review](docs/verification-review.md).
 
 ## Status
 

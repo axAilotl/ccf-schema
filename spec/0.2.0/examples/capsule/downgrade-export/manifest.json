@@ -118,7 +118,23 @@
     {
       "object_id": "urn:ccf:record:4e9f8cc9-563a-4d61-8221-9f55e9db39bd",
       "availability": "external",
-      "reason": "The source-device Record is outside this scoped downgrade export.",
+      "reason": "The referenced source Record is outside this scoped downgrade export.",
+      "locator": null,
+      "source_custody_proof": "receipt:urn:ccf:receipt:13131313-1313-4313-8313-131313131313",
+      "unavailability_lineage_id": null
+    },
+    {
+      "object_id": "urn:ccf:record:682d6151-5dd6-42d8-874c-895c3a501f09",
+      "availability": "external",
+      "reason": "The referenced source Record is outside this scoped downgrade export.",
+      "locator": null,
+      "source_custody_proof": "receipt:urn:ccf:receipt:13131313-1313-4313-8313-131313131313",
+      "unavailability_lineage_id": null
+    },
+    {
+      "object_id": "urn:ccf:record:908e42a4-f136-458f-8cf9-7597922fab21",
+      "availability": "external",
+      "reason": "The referenced source Record is outside this scoped downgrade export.",
       "locator": null,
       "source_custody_proof": "receipt:urn:ccf:receipt:13131313-1313-4313-8313-131313131313",
       "unavailability_lineage_id": null

@@ -110,6 +110,13 @@ ccf-governed-archive-v1
   + ccf-succession-v1
 ```
 
+L2 MUST verify each available structural and semantic compartment against its
+header commitment and each available Blob body against its committed byte length
+and salted content commitment. Available Blob bytes require both compartments.
+Unsigned stream checksums cannot replace these checks. L3 restore inherits this
+requirement before granting archive integrity; unavailable bodies remain
+unavailable and do not acquire an invented plaintext value.
+
 L3 proves valid-prefix integrity, not that a presented head is newest. Rollback
 detection requires `ccf-witnessed-integrity-v1` and a trusted checkpoint.
 
@@ -128,6 +135,12 @@ Each entry declares:
 An implementation MAY preserve an object whose requirements exceed its own
 declaration. It MUST NOT activate that object's behavior, apply its state
 transition, treat it as authorization, or claim to reproduce its semantics.
+
+Activation MUST satisfy the combined requirements of the enclosing object type
+and every registered predicate it uses. For the inherited `semantic.assertion`
+format, predicate names select version 1. An unregistered predicate MUST remain
+inert or be refused; declaring only `semantic.assertion` does not authorize its
+predicate's semantic pack.
 
 Semantic understanding and consequential state are deliberately separate. For
 example, an Exchange implementation with the work pack can understand a
@@ -187,6 +200,21 @@ distinct. Every listed stream has a SHA-256 digest and byte length. A signature
 or archive proof is optional and creates no claim unless its declared profile is
 supported and verification succeeds.
 
+Before activating content, an importer MUST resolve each required catalog,
+schema, or registry dependency by kind, identifier, and digest. Local artifacts
+MUST match their catalog digests; loading a schema with the expected identifier
+alone is insufficient. Unresolved optional dependencies may be preserved but do
+not establish semantic support.
+
+Every typed object reference in an active submission MUST resolve to an included
+object or a declared external, withheld, or erased dependency. This includes Link
+endpoints, provenance and authority claims, origin sources, lineage predecessors,
+and references in registered payload schemas, including arrays. Arbitrary strings
+in literal values or unknown extensions are not typed object references. A
+lineage identifier names a lineage, not a portable object; its predecessor Record
+is an object reference. Declaring a dependency reports availability and does not
+grant authority or permission to apply consequential state.
+
 Every stream also declares its activation requirements and handling. Material
 above the recipient's level or capabilities is marked `preserve_inert` or
 `preserve_opaque`; an `activate` stream whose requirements are unmet is invalid.
@@ -211,9 +239,13 @@ capability verifier actually accepted; a nonempty string alone is not proof.
 The base Exchange validator refuses such a claim. The signed-producer-sync
 suite resolves the retained batch against an explicit credential trust anchor,
 verifies the ordered, fully hash-pinned canonical credential lineage and
-revocation state at batch time,
-checks the key binding and signature, and recomputes the covered submission
-hash before accepting it. A deployment obtains that trust anchor from an
+revocation state at batch time, and checks both the lineage and credential
+payload validity intervals. `valid_from` is inclusive; `expires_at` is exclusive
+and null means unbounded. Ingestion and receipt verification MUST use the same
+validity rule. The suite checks key binding and signature, recomputes the covered
+submission hash, and authenticates an ordered producer-batch prefix from genesis
+through the retained batch, including sequence and predecessor continuity.
+Missing predecessor evidence MUST NOT grant verified signed-sync authentication. A deployment obtains that trust anchor from an
 authenticated archive state or an explicitly configured out-of-band trust
 store; an arbitrary credential supplied alongside a batch is not trusted.
 

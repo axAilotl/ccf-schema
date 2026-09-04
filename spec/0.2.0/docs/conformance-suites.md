@@ -5,13 +5,16 @@ oracles separate.
 
 | Suite | Direct proof boundary |
 |---|---|
-| `check-exchange` | Registries, declarations, submission schemas and semantic payloads, references, streams, dependencies, requirements, Capsule, uplift, and exact downgrade inventories |
-| `check-canonical` | Exchange plus inherited JCS, adversarial number/key ordering, commitments, object hashes, completed and pending uplift, exact origin idempotency, atomic conflict behavior, and unavailable states |
+| `check-exchange` | Registries, declarations, submission schemas and semantic payloads, typed references, streams, resolved catalog dependencies, type and predicate requirements, Capsule, uplift, and exact downgrade inventories |
+| `check-canonical` | Exchange plus inherited JCS, adversarial number/key ordering, commitments, every available compartment and Blob body, object hashes, completed and pending uplift, exact origin idempotency, atomic conflict behavior, and unavailable states |
 | `check-verified` | Canonical plus commit signing, trusted-genesis signer binding, signature/stream/parent/Merkle tamper rejection, catalog pins, restore identity, downgrade source authentication, foreign merge, head, and member/object correspondence |
 | `check-governed` | Verified plus 0.1.2 governance, authority, lineage, suppression, projection, and PostgreSQL fixtures |
 
 `check-exchange` is the acceptance boundary for a notebook importer. It does not
-run canonical hashing, archive signatures, policy evaluation, or PostgreSQL.
+verify portable object hashes, archive signatures, policy evaluation, or PostgreSQL.
+Catalog identity still requires the inherited JCS artifact digests: the runner
+recomputes catalog roots and schema/registry digests before resolving required
+Capsule dependencies by kind, identifier, and digest.
 `check-canonical` adds no journal or governance requirement. The destructive and
 database-backed checks remain at Governed Archive.
 
@@ -51,8 +54,14 @@ The base Exchange validator deliberately refuses a `verified` producer receipt;
 only the signed-sync capability verifier may accept it after resolving the
 retained batch against an explicit credential trust anchor, validating the
 ordered, fully hash-pinned canonical credential lineage and revocation state at
-batch time, and checking
-the key binding, signature, proof digest, and covered submission. The published
+batch time, and checking the payload and lineage validity intervals
+(`valid_from <= created_at < expires_at`, with null expiry unbounded). Both
+ingestion and receipts use the same check. Receipt verification also replays an
+ordered, authenticated producer-batch prefix from genesis through the retained
+batch, checking sequence and predecessor hashes through the ingestion path.
+A signature alone cannot grant the signed-sync claim; missing predecessor
+evidence makes receipt verification fail. It then checks the proof digest and
+covered submission. The published
 trust vector models either an authenticated archive result or an out-of-band
 deployment trust store; a credential bundled by an untrusted producer is not a
 trust anchor.
@@ -61,3 +70,11 @@ The continuity, work, and agent registries likewise name independent
 `check-semantic-pack-*` targets. Each target proves exact registered-resource,
 payload-schema, and distribution-bundle coverage without raising the
 implementation's guarantee level.
+
+The level targets also run `tools/check-reference-boundaries.py` against temporary
+package copies. Exchange mutations refresh unsigned stream and bundle checksums
+so rejection must come from dependency resolution or activation/reference checks.
+Canonical and Verified mutations change available bodies while refreshing only
+unsigned stream metadata, leaving committed hashes and the signed journal intact.
+Tests include declared unavailable references and opaque extension/literal values
+that must remain acceptable. Original 0.1.2 fixtures are never modified.

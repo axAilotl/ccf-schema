@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -214,6 +215,112 @@ def registered_activation_requirement(submission):
     return requirement
 
 
+def activation_requirements(submission):
+    yield registered_activation_requirement(submission)
+    if submission.get("type") == "semantic.assertion":
+        # The inherited assertion format has no predicate version selector;
+        # its predicate names resolve to the version-1 registry entries.
+        predicate = submission["payload"]["predicate"]
+        requirement = requirement_by_resource.get(("predicate", predicate, 1))
+        if requirement is None:
+            raise ValueError(f"unregistered active predicate: {predicate}")
+        yield requirement
+
+
+def assert_activation(submission, declaration):
+    try:
+        for requirement in activation_requirements(submission):
+            if level_rank[requirement["minimum_level"]] > level_rank[declaration["level"]]:
+                raise SystemExit(f'capsule activates {submission["id"]} below its minimum level')
+            needed = set(requirement["required_capabilities"])
+            if requirement["semantic_pack"] is not None:
+                needed.add(requirement["semantic_pack"])
+            if not needed <= set(declaration["capabilities"]):
+                raise SystemExit(f'capsule activates {submission["id"]} without {sorted(needed)}')
+    except ValueError as error:
+        raise SystemExit(f'capsule attempts to activate unregistered semantics: {error}') from error
+
+
+# Use the inherited JCS implementation for catalog/resource digests at Exchange.
+# This authenticates dependency identity, without promising object or journal hashes.
+resource_result = subprocess.run(
+    ["node", str(ROOT / "tools" / "catalog-resources.mjs")],
+    capture_output=True, text=True,
+)
+if resource_result.returncode:
+    raise SystemExit(resource_result.stderr.strip())
+resolved_catalog_resources = {
+    (entry["kind"], entry["identifier"]): entry["digest"]
+    for entry in json.loads(resource_result.stdout)
+}
+
+
+def resolve_catalog_dependencies(declaration):
+    seen = set()
+    for dependency in declaration["catalog_dependencies"]:
+        key = (dependency["kind"], dependency["identifier"])
+        if key in seen:
+            raise SystemExit(f"duplicate catalog dependency: {key}")
+        seen.add(key)
+        if (dependency["required"]
+                and resolved_catalog_resources.get(key) != dependency["digest"]):
+            raise SystemExit(f"unresolved required catalog dependency: {key}")
+
+
+def typed_references(value, schema, resolver, location=()):
+    """Follow registered schema types; opaque extensions and literals stay opaque."""
+    if not isinstance(schema, dict):
+        return
+    reference = schema.get("$ref")
+    if reference:
+        if reference in {
+            f"urn:ccf:schema:0.1.2:common.defs#/$defs/{kind}Urn"
+            for kind in ("record", "link", "blob", "object")
+        }:
+            if isinstance(value, str):
+                yield location, value
+            return
+        resolved = resolver.lookup(reference)
+        yield from typed_references(value, resolved.contents, resolved.resolver, location)
+    for keyword in ("allOf", "anyOf", "oneOf"):
+        for branch in schema.get(keyword, []):
+            # Walk only applicable alternatives (e.g. reference vs literal).
+            validator = Draft202012Validator(
+                branch, registry=schema_registry, format_checker=CCF_FORMAT_CHECKER,
+            )
+            if keyword == "allOf" or validator.is_valid(value):
+                yield from typed_references(value, branch, resolver, location)
+    if isinstance(value, dict):
+        for name, child_schema in schema.get("properties", {}).items():
+            if name in value:
+                yield from typed_references(value[name], child_schema, resolver, (*location, name))
+    elif isinstance(value, list) and "items" in schema:
+        for index, item in enumerate(value):
+            yield from typed_references(item, schema["items"], resolver, (*location, str(index)))
+
+
+def assert_object_dependencies(items, declaration):
+    included_or_declared = {item["id"] for item in items} | {
+        dependency["object_id"] for dependency in declaration["dependencies"]
+    }
+    for item in items:
+        kind = item["submission_kind"]
+        schema_id = f"urn:ccf:schema:0.1.2:submissions.{kind}"
+        references = list(typed_references(item, schemas[schema_id], schema_registry.resolver(schema_id)))
+        if kind == "record":
+            entry = base_registry_entries["record_type"][(item["type"], item["type_version"])]
+            payload_schema_id = entry["semantic_schema_id"]
+            references.extend(typed_references(
+                item["payload"], schemas[payload_schema_id],
+                schema_registry.resolver(payload_schema_id), ("payload",),
+            ))
+        for location, target in references:
+            if target not in included_or_declared:
+                raise SystemExit(
+                    f'capsule {item["id"]} has undeclared reference {"/".join(location)}: {target}'
+                )
+
+
 def assert_declared_features_fit_level(declaration, label: str):
     declared_level_rank = level_rank[declaration["level"]]
     for feature_id in declaration["capabilities"]:
@@ -329,6 +436,7 @@ if manifest["level"] not in levels:
 if not set(manifest["capabilities"]) <= all_capability_ids:
     raise SystemExit("capsule declares an unknown capability or semantic pack")
 assert_declared_features_fit_level(manifest, "capsule")
+resolve_catalog_dependencies(manifest)
 
 submissions = []
 reexported_submissions = []
@@ -413,18 +521,8 @@ for submission in submissions:
         submission,
         f'capsule submission {submission["id"]}',
     )
-    try:
-        requirement = registered_activation_requirement(submission)
-    except ValueError as error:
-        raise SystemExit(f'capsule attempts to activate unregistered semantics for {submission["id"]}') from error
-    if level_rank[requirement["minimum_level"]] > level_rank[manifest["level"]]:
-        raise SystemExit(f'capsule activates {submission["id"]} below its minimum level')
-    needed = set(requirement["required_capabilities"])
-    if requirement["semantic_pack"] is not None:
-        needed.add(requirement["semantic_pack"])
-    if not needed <= set(manifest["capabilities"]):
-        raise SystemExit(f'capsule activates {submission["id"]} without {sorted(needed)}')
-    if submission["submission_kind"] == "record" and submission["type_visibility"] == "clear":
+    assert_activation(submission, manifest)
+    if submission["submission_kind"] == "record":
         type_entry = base_registry_entries["record_type"].get(
             (submission["type"], submission["type_version"])
         )
@@ -462,14 +560,7 @@ if not list(producer_batch_validator.iter_errors(oversized_sequence_batch)):
     raise SystemExit("producer batch schema accepts an oversized decimal sequence")
 print("OK   CCF uint64 schema format boundary")
 
-included_or_declared = set(ids) | {
-    dependency["object_id"] for dependency in manifest["dependencies"]
-}
-for submission in submissions:
-    if submission["submission_kind"] == "link":
-        for endpoint in (submission["from_id"], submission["to_id"]):
-            if endpoint not in included_or_declared:
-                raise SystemExit(f"capsule Link has undeclared endpoint {endpoint}")
+assert_object_dependencies(submissions, manifest)
 
 member_ids = set(ids) - {manifest["root_record_id"]}
 membership_links = {
@@ -684,6 +775,7 @@ validate(
     downgrade_export_manifest,
     "downgrade export Capsule manifest",
 )
+resolve_catalog_dependencies(downgrade_export_manifest)
 if downgrade_export_manifest["pack_id"] != downgrade["export_pack_id"]:
     raise SystemExit("downgrade receipt export_pack_id does not bind the exported Capsule")
 if (
@@ -779,9 +871,8 @@ for submission in exported_submissions:
         submission,
         f'downgrade export submission {submission["id"]}',
     )
-    requirement = registered_activation_requirement(submission)
-    if requirement["minimum_level"] != "ccf-exchange-v1":
-        raise SystemExit("downgrade export activates an assertion above Exchange")
+    assert_activation(submission, downgrade_export_manifest)
+assert_object_dependencies(exported_submissions, downgrade_export_manifest)
 logical_export_ids = {
     subject.removeprefix("submission:")
     for category, subject in export_inventory

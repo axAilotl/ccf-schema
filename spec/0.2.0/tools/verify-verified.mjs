@@ -1,3 +1,4 @@
+import { verifyAvailableBodies } from './verify-object-integrity.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -245,6 +246,7 @@ check(
 );
 
 function restoreMindpack() {
+  verifyAvailableBodies(MINDPACK, headers);
   const objects = new Map();
   for (const header of headers) {
     check(objectHash(header) === header.object_hash, `restore object hash ${header.id}`);
@@ -325,6 +327,7 @@ const downgradeHeaders = [
   ...readNdjson(path.join(downgradeSource, 'objects', 'links.ndjson')),
   ...readNdjson(path.join(downgradeSource, 'objects', 'blobs.ndjson')),
 ];
+verifyAvailableBodies(downgradeSource, downgradeHeaders);
 const downgradeHeaderById = new Map(downgradeHeaders.map((header) => [header.id, header]));
 const downgradeBatchFiles = fs.readdirSync(path.join(downgradeSource, 'producer-batches'));
 check(downgradeBatchFiles.length === 1, 'downgrade source selects one producer batch');

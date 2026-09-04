@@ -101,10 +101,10 @@ check(
   'credential active at signed batch time',
 );
 
-function verifyEnvelope(candidate) {
+function verifyEnvelope(candidate, retainedState = credentialState, anchor = credentialTrustAnchor) {
   const activeCredential = trustedCredentialAt(
-    credentialState,
-    credentialTrustAnchor,
+    retainedState,
+    anchor,
     candidate.created_at,
   );
   if (!activeCredential) return false;
@@ -158,8 +158,8 @@ function resign(candidate) {
   return candidate;
 }
 
-function ingest(state, candidate) {
-  if (!verifyEnvelope(candidate)) return 'invalid_envelope';
+function ingest(state, candidate, retainedState = credentialState, anchor = credentialTrustAnchor) {
+  if (!verifyEnvelope(candidate, retainedState, anchor)) return 'invalid_envelope';
   if (!isCanonicalUint64(candidate.producer_sequence, { nonzero: true })) return 'invalid_sequence';
   const sequence = BigInt(candidate.producer_sequence);
   if ((sequence === 1n) !== (candidate.previous_batch_hash === null)) {
@@ -265,6 +265,15 @@ check(
   'unsafe decimal-string sequence keys do not alias',
 );
 
+// Both ingestion and receipt verification use this half-open validity interval.
+function credentialIntervalContains(interval, at) {
+  const start = Date.parse(interval.valid_from);
+  const end = interval.expires_at === null ? Infinity : Date.parse(interval.expires_at);
+  return Number.isFinite(at) && Number.isFinite(start)
+    && (interval.expires_at === null || Number.isFinite(end))
+    && start < end && start <= at && at < end;
+}
+
 function trustedCredentialAt(retainedCredentialState, trustAnchor, timestamp) {
   try {
     if (
@@ -348,65 +357,39 @@ function trustedCredentialAt(retainedCredentialState, trustAnchor, timestamp) {
       (record) => Date.parse(record.envelope.content.lineage.valid_from) <= at,
     ).at(-1);
     if (!active || active.envelope.content.lineage.transition === 'revoke') return null;
-    const activeLineageExpiry = active.envelope.content.lineage.expires_at;
-    if (activeLineageExpiry !== null && at >= Date.parse(activeLineageExpiry)) return null;
-    return active.envelope.content.structural_payload;
+    const { lineage, structural_payload: payload } = active.envelope.content;
+    if (!credentialIntervalContains(lineage, at) || !credentialIntervalContains(payload, at)) return null;
+    return payload;
   } catch {
     return null;
   }
 }
 
-function verifyProducerProof(entry, retainedBatch, retainedCredentialState, trustAnchor) {
-  const proof = entry.producer_proof;
-  const retainedCredential = trustedCredentialAt(
-    retainedCredentialState,
-    trustAnchor,
-    retainedBatch.created_at,
-  );
-  if (!proof || !retainedCredential) return false;
-  const retainedSubmissions = [
-    ...retainedBatch.records,
-    ...retainedBatch.links,
-    ...retainedBatch.blobs,
-  ];
-  const retainedSubmission = retainedSubmissions.find((item) => item.id === entry.source_id);
-  const batchTime = Date.parse(retainedBatch.created_at);
-  let credentialKey;
+// Receipt evidence is an ordered prefix of authenticated batches from genesis.
+// Replaying it through ingestion avoids treating an arbitrary hash map supplied
+// by a producer as verified predecessor state.
+function verifyProducerProof(entry, retainedBatch, retainedCredentialState, trustAnchor, predecessors = []) {
   try {
-    credentialKey = crypto.createPublicKey({
-      key: {
-        kty: 'OKP',
-        crv: 'Ed25519',
-        x: retainedCredential.signing_key.public_key,
-      },
-      format: 'jwk',
-    });
+    const proof = entry.producer_proof;
+    if (!proof || !Array.isArray(predecessors)) return false;
+    const chainState = { bySequence: new Map() };
+    for (const candidate of [...predecessors, retainedBatch]) {
+      if (candidate.producer_id !== retainedBatch.producer_id
+        || ingest(chainState, candidate, retainedCredentialState, trustAnchor) !== 'accepted') return false;
+    }
+    const retainedSubmission = [
+      ...retainedBatch.records, ...retainedBatch.links, ...retainedBatch.blobs,
+    ].find((item) => item.id === entry.source_id);
+    return entry.producer_authentication === 'verified'
+      && proof.profile === 'ccf-signed-producer-sync-v1'
+      && proof.credential_id === retainedBatch.credential_id
+      && proof.batch_id === retainedBatch.batch_id
+      && proof.proof_digest === retainedBatch.batch_hash
+      && Boolean(retainedSubmission)
+      && submissionHash(retainedSubmission) === entry.source_submission_hash;
   } catch {
     return false;
   }
-  return entry.producer_authentication === 'verified'
-    && proof.profile === 'ccf-signed-producer-sync-v1'
-    && proof.credential_id === retainedCredential.credential_id
-    && proof.batch_id === retainedBatch.batch_id
-    && proof.proof_digest === retainedBatch.batch_hash
-    && retainedBatch.credential_id === retainedCredential.credential_id
-    && retainedBatch.producer_id === retainedCredential.subject_id
-    && isCanonicalUint64(retainedBatch.producer_sequence, { nonzero: true })
-    && retainedCredential.signing_key.profile === 'ed25519'
-    && retainedCredential.scopes.includes('sync')
-    && Number.isFinite(batchTime)
-    && batchTime >= Date.parse(retainedCredential.valid_from)
-    && (retainedCredential.expires_at === null
-      || batchTime < Date.parse(retainedCredential.expires_at))
-    && Boolean(retainedSubmission)
-    && submissionHash(retainedSubmission) === entry.source_submission_hash
-    && producerBatchHash(retainedBatch) === retainedBatch.batch_hash
-    && crypto.verify(
-      null,
-      producerBatchSigningDigest(retainedBatch.batch_hash),
-      credentialKey,
-      Buffer.from(retainedBatch.signature, 'base64url'),
-    );
 }
 
 const provedSubmission = batch.records[0];
@@ -662,4 +645,58 @@ check(
   'self-minted credential and matching batch key rejected by trust anchor',
 );
 
+for (const [field, value, expected] of [
+  ['expires_at', batch.created_at, false],
+  ['valid_from', '2026-08-11T21:42:20.400Z', false],
+  ['valid_from', batch.created_at, true],
+  ['expires_at', null, true],
+  ['valid_from', 'invalid', false],
+  ['expires_at', 'invalid', false],
+]) {
+  const state = structuredClone(credentialState);
+  for (const record of state) record.envelope.content.structural_payload[field] = value;
+  recanonicalizeCredentialState(state);
+  const anchor = repinCredentialState(state, credentialTrustAnchor);
+  const ingestion = { bySequence: new Map() };
+  check(
+    ingest(ingestion, batch, state, anchor) === (expected ? 'accepted' : 'invalid_envelope'),
+    `credential payload ${field}=${value} ingestion boundary`,
+  );
+  check(
+    verifyProducerProof(verifiedEntry, batch, state, anchor) === expected,
+    `credential payload ${field}=${value} receipt boundary`,
+  );
+  if (!expected) check(ingestion.bySequence.size === 0, 'invalid credential leaves ingestion state unchanged');
+}
+
+function receiptFor(candidate) {
+  const entry = structuredClone(verifiedEntry);
+  entry.producer_proof.batch_id = candidate.batch_id;
+  entry.producer_proof.proof_digest = candidate.batch_hash;
+  return entry;
+}
+const orphanBatch = resign({
+  ...structuredClone(successor), previous_batch_hash: `sha256:${'0'.repeat(64)}`,
+});
+check(ingest({ bySequence: new Map() }, orphanBatch) === 'predecessor_missing', 'orphan remains pending');
+check(!verifyProducerProof(receiptFor(orphanBatch), orphanBatch, credentialState, credentialTrustAnchor),
+  'signed orphan cannot grant a verified receipt');
+check(!verifyProducerProof(receiptFor(successor), successor, credentialState, credentialTrustAnchor),
+  'successor receipt requires predecessor evidence');
+check(verifyProducerProof(receiptFor(successor), successor, credentialState, credentialTrustAnchor, [batch]),
+  'successor receipt verifies with authenticated genesis');
+check(verifyProducerProof(receiptFor(third), third, credentialState, credentialTrustAnchor, [batch, successor]),
+  'third receipt verifies a complete authenticated prefix');
+for (const evidence of [[successor], [successor, batch], [batch, batch], [changedBatch, successor]]) {
+  check(!verifyProducerProof(receiptFor(third), third, credentialState, credentialTrustAnchor, evidence),
+    'missing, reordered, duplicate, or altered predecessor evidence rejected');
+}
+const badSignaturePredecessor = structuredClone(batch);
+badSignaturePredecessor.signature = changedSignature.toString('base64url');
+check(!verifyProducerProof(receiptFor(successor), successor, credentialState, credentialTrustAnchor, [badSignaturePredecessor]),
+  'predecessor hash without a valid signature is insufficient');
+check(!verifyProducerProof(receiptFor(orphanBatch), orphanBatch, credentialState, credentialTrustAnchor, [batch]),
+  'mismatched predecessor hash rejected in receipt evidence');
+check(!verifyProducerProof(receiptFor(linkedGenesis), linkedGenesis, credentialState, credentialTrustAnchor),
+  'receipt rejects non-null genesis parent');
 console.log(`Signed Producer Sync capability vectors pass: ${checks} checks.`);

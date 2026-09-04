@@ -8,12 +8,15 @@ check: check-exchange check-canonical
 
 check-exchange:
 	$(UV) run --no-project --with-requirements requirements-checks.txt $(PYTHON) tools/validate-exchange.py
+	$(UV) run --no-project --with-requirements requirements-checks.txt $(PYTHON) tools/check-reference-boundaries.py exchange
 
 check-canonical: check-exchange
 	node tools/verify-canonical.mjs
+	$(UV) run --no-project --with-requirements requirements-checks.txt $(PYTHON) tools/check-reference-boundaries.py canonical
 
 check-verified: check-canonical
 	node tools/verify-verified.mjs
+	$(UV) run --no-project --with-requirements requirements-checks.txt $(PYTHON) tools/check-reference-boundaries.py verified
 
 check-governed: check-verified
 	PYTHON=$(PYTHON) $(UV) run --no-project --with-requirements $(BASE)/requirements-checks.txt bash $(BASE)/tools/check-all.sh

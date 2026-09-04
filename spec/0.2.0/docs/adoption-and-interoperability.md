@@ -42,3 +42,44 @@ schema repository. The package directly exercises Capsule preservation,
 canonical uplift/idempotency, Verified foreign-merge invariants, and Governed
 erasure fixtures. Real Thoth/Cissa round trips and process-interruption tests
 require those application repositories and remain external release gates.
+
+## Cissa-to-Thoth build acceptance checks
+
+Use the 0.2.0 Working Draft for the current integration builds while retaining
+`ccf/0.1.2` portable Record, Link, Blob, and compartment formats and hashes.
+A draft implementation declaration describes the selected role, guarantee level,
+and supported packs/capabilities; it does not announce a 0.2.0 interoperability
+release. Do not rewrite existing objects to adopt the draft's layered declarations.
+
+The six reference-verifier gaps and their regression results are recorded in
+[verification-review.md](verification-review.md). Carry the following checks
+into the Cissa sender and Thoth receiver adapters:
+
+| Build boundary | Required integration behavior |
+|---|---|
+| Cissa export → Thoth Exchange import | Resolve required catalog/schema/registry dependencies by identifier and digest before activation; reject mismatched dependencies |
+| Active semantic assertions | Require both the enclosing type's requirements and its predicate's pack/capabilities; preserve unsupported semantics inertly or refuse activation |
+| Scoped Capsule dependencies | Include or declare the recorder, origin source, authority/person claims, lineage predecessor, typed payload references, and Link endpoints; retain external/withheld/erased distinctions |
+| Canonical admission and archive restore | Verify every available compartment and Blob against committed hashes and byte lengths; updating unsigned stream checksums must not hide altered transcripts or audio |
+| Signed upload authentication | Validate the trusted credential lineage and payload at batch time with inclusive `valid_from` and exclusive `expires_at`; null expiry is unbounded |
+| Signed-sync receipt | Retain authenticated predecessor evidence and verify continuity; an orphan batch may await its predecessor but cannot receive a verified signed-sync receipt |
+
+For a signed-sync Cissa sender and Thoth receiver, declare
+`ccf-signed-producer-sync-v1` explicitly. Persist batch ID, sequence, predecessor
+hash, and signature across retries. The receiver must resolve credential state
+from its configured trust source. The reference receipt verifier takes an ordered
+prefix of retained producer batches from genesis; supplying only a predecessor
+hash or a producer-supplied credential does not provide that evidence.
+
+Exercise both successful transfers and the rejection cases above through the
+actual application APIs. Include duplicate retries, an out-of-order successor
+that resumes after its predecessor arrives, altered transcript/audio content,
+and a credential expiring exactly at batch creation time. Verify that rejected
+content is not activated or admitted and that receipts report the outcome the
+receiver actually established.
+
+Keep the [capture interruption tests](capture-boundary.md) in the build plan.
+Reliable capture/spool recovery and archive admission are separate boundaries;
+passing the schema reference suite does not establish either application's
+crash recovery. Record the sender and receiver revisions, declarations, fixture
+inputs, and observed receipts when these cross-application checks run.

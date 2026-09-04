@@ -168,14 +168,22 @@ const downgradeExportManifest = {
     byte_length: String(exchangeBytes.byteLength),
     required: true,
   }],
-  dependencies: [{
-    object_id: selectedExportSubmissions[0].origin.source_id,
+  dependencies: [...new Set(selectedExportSubmissions.flatMap((submission) => [
+    submission.origin.source_id,
+    submission.recorded_by,
+    submission.claims.person_id,
+    submission.claims.perspective_id,
+    submission.claims.authority.asserted_by,
+    ...submission.claims.privacy.data_subjects.map((subject) => subject.person_id),
+    ...submission.payload.participants,
+  ]))].map((object_id) => ({
+    object_id,
     availability: 'external',
-    reason: 'The source-device Record is outside this scoped downgrade export.',
+    reason: 'The referenced source Record is outside this scoped downgrade export.',
     locator: null,
     source_custody_proof: `receipt:${downgrade.receipt_id}`,
     unavailability_lineage_id: null,
-  }],
+  })),
   proofs: [],
   extensions: { 'org.example.transfer_label': 'Selected verified source assertion' },
 };

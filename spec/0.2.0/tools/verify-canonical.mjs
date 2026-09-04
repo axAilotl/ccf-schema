@@ -1,3 +1,4 @@
+import { verifyAvailableBodies } from './verify-object-integrity.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -283,6 +284,10 @@ const admittedHeaders = [
   ...readNdjson(path.join(BASE, 'examples', 'mindpack', 'objects', 'links.ndjson')),
   ...readNdjson(path.join(BASE, 'examples', 'mindpack', 'objects', 'blobs.ndjson')),
 ];
+check(
+  verifyAvailableBodies(path.join(BASE, 'examples', 'mindpack'), admittedHeaders),
+  'available canonical compartments and Blob bytes verify',
+);
 const admittedById = new Map(admittedHeaders.map((header) => [header.id, header]));
 for (const submission of submissions) {
   const header = admittedById.get(submission.id);
