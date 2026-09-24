@@ -286,9 +286,11 @@ def check_export(directory):
                 errors.append(f"{where}: kind must be {kind}")
                 continue
             errors += [f"{where} {e}" for e in object_errors(obj)]
-            if obj.get("id") in objects:
+            if not isinstance(obj.get("id"), str):
+                continue
+            if obj["id"] in objects:
                 errors.append(f"{where}: duplicate id {obj['id']}")
-            objects[obj.get("id")] = (where, obj)
+            objects[obj["id"]] = (where, obj)
 
     for where, obj in objects.values():
         if "deleted" in obj:

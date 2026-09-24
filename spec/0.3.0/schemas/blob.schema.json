@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ccf.dev/0.3.0/blob.schema.json",
+  "$id": "https://github.com/axAilotl/ccf-schema/spec/0.3.0/schemas/blob.schema.json",
   "title": "CCF 0.3.0 Blob",
   "allOf": [{"$ref": "common.schema.json#/$defs/object"}],
   "if": {"required": ["deleted"]},

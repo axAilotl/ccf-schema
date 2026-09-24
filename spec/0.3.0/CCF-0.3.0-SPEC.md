@@ -28,7 +28,9 @@ There are three kinds of object.
 - **Blob** — a pointer to bytes: audio, an image, a PDF, a file.
 
 Every object is one JSON object. The JSON Schemas in `schemas/` are normative
-for field names, types, and required fields.
+for field names, types, and required fields. Their `$id` values are
+identifiers, not download locations; validators SHOULD load all five schemas
+locally.
 
 ### 1.1 Common fields
 
@@ -237,15 +239,25 @@ deletion. Deleting the underlying content at `loc` is up to the application.
 4. the greater canonical JSON (§3.1) of the whole object, compared as bytes.
 
 Every implementation that applies this rule to the same inputs ends with the
-same winner. When the copies differ and neither `rev` is higher, the two devices
+same winner. When the copies differ and have the same `rev`, the two devices
 edited the object independently. The application SHOULD keep the losing copy
 and show the conflict to the person. A conflict MUST NOT block syncing or
 processing of other objects.
 
-**Sync.** Devices exchange objects, not operations. To send changes, a device
-sends every object whose `updated` is at or after the last point the receiver
-has acknowledged, ordered by `(updated, id)`. The receiver applies the merge
-rule to each one. The transport, API, and scheduling are up to the application.
+`rev` detects a conflict only when both copies have the same `rev`. If one
+device edits an object twice while another edits it once, the first device's
+copy wins without a conflict being flagged. An application that needs to detect
+every concurrent edit must keep its own per-device history, which CCF does not
+require.
+
+**Sync.** Devices exchange objects, not operations. For each peer, a device
+tracks which of its objects that peer has not yet acknowledged, for example with
+a local change counter or a dirty flag, and sends those objects. It MUST NOT use
+`updated` to decide what to send: device clocks drift and can move backwards,
+and objects stamped before a timestamp cursor would never sync. `updated` is
+only for the merge rule and for display. The receiver applies the merge rule to
+each object it receives. The transport, API, and scheduling are up to the
+application.
 Objects created while two devices were disconnected simply appear on the other
 side when they reconnect; nothing is renumbered.
 
@@ -306,9 +318,9 @@ NOT require other CCF fields in external files.
 ## 9. Storage
 
 CCF does not prescribe storage. A store is correct if it can produce the
-objects in this specification and apply the merge rule. A single SQLite or
-Postgres table per kind, keyed by `id`, with an index on `(updated, id)`, is
-enough.
+objects in this specification, apply the merge rule, and track what each peer
+has acknowledged. A single SQLite or Postgres table per kind, keyed by `id`,
+plus a local change counter per row, is enough.
 
 ## 10. Security (informative)
 

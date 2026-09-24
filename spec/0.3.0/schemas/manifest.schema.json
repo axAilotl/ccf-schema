@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ccf.dev/0.3.0/manifest.schema.json",
+  "$id": "https://github.com/axAilotl/ccf-schema/spec/0.3.0/schemas/manifest.schema.json",
   "title": "CCF 0.3.0 export manifest",
   "type": "object",
   "required": ["format", "version", "exported_at", "source", "counts"],
